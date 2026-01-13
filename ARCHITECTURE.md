@@ -2,22 +2,24 @@
 
 ## Project Overview
 
-A browser-based tic-tac-toe game demonstrating x402 payment protocol integration. Players pay per game using USDC on the Base network via a browser wallet extension.
+A browser-based tic-tac-toe game demonstrating x402 payment protocol integration. Players pay per game using USDC on the Base Sepolia network via a browser wallet extension.
 
 ## Technology Stack
 
 | Component | Technology |
 |-----------|------------|
-| Server | Node.js with Express |
-| Client | React |
+| Server | Node.js with Express (TypeScript) |
+| Client | React with Vite (TypeScript) |
 | Payment Protocol | x402 |
-| Network | Base |
+| Network | Base Sepolia (MVP), Base Mainnet (future) |
 | Payment Token | USDC |
-| Wallet Integration | Browser extensions (MetaMask, Rabby, etc.) |
+| Wallet Integration | wagmi/viem with browser extensions (MetaMask, Rabby, etc.) |
 
 ## Game Mode
 
 - **Player vs AI**: Single player games against a server-side AI opponent
+- **First Move**: Random (player or AI)
+- **AI Difficulty**: Simple (allows mistakes for better UX)
 
 ---
 
@@ -30,13 +32,14 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 │  Landing Page                     │  Game Page                  │
 │  ┌─────────────────────────────┐  │  ┌───────────────────────┐  │
 │  │  "Start Game" Button        │  │  │  Tic-Tac-Toe Board    │  │
-│  │  (triggers payment flow)    │  │  │  Game State Display   │  │
-│  └─────────────────────────────┘  │  └───────────────────────┘  │
-│               │                   │             │               │
-│               ▼                   │             ▼               │
-│  ┌─────────────────────────────┐  │  ┌───────────────────────┐  │
-│  │  Wallet Extension           │  │  │  Session Management   │  │
-│  │  (MetaMask/Rabby)           │  │  │  (sessionId storage)  │  │
+│  │  (triggers wallet connect   │  │  │  Game State Display   │  │
+│  │   then payment flow)        │  │  └───────────────────────┘  │
+│  └─────────────────────────────┘  │             │               │
+│               │                   │             ▼               │
+│               ▼                   │  ┌───────────────────────┐  │
+│  ┌─────────────────────────────┐  │  │  Session Management   │  │
+│  │  Wallet Extension           │  │  │  (wallet address      │  │
+│  │  (MetaMask/Rabby)           │  │  │   in sessionStorage)  │  │
 │  │  Signs x402 payment         │  │  └───────────────────────┘  │
 │  └─────────────────────────────┘  │                             │
 └───────────────────────────────────┴─────────────────────────────┘
@@ -49,29 +52,33 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 │  ┌─────────────────────────────────────────────────────────────┐│
 │  │  x402 Middleware                                            ││
 │  │  - Validates payment headers                                ││
+│  │  - Extracts wallet address from payment                     ││
 │  │  - Protects paid endpoints                                  ││
 │  └─────────────────────────────────────────────────────────────┘│
 │                              │                                  │
 │  ┌───────────────────────────┼──────────────────────────────┐  │
 │  │                           ▼                              │  │
 │  │  POST /api/session/start (PAID - x402 protected)         │  │
-│  │  - Creates new game session                              │  │
-│  │  - Returns sessionId                                     │  │
+│  │  - Checks if wallet has active session → return existing │  │
+│  │  - Creates new session bound to wallet address           │  │
+│  │  - Returns session info + initial board state            │  │
 │  │  - Sets 5 min expiry                                     │  │
 │  │                                                          │  │
-│  │  POST /api/game/move (FREE - session validated)          │  │
-│  │  - Validates sessionId                                   │  │
+│  │  POST /api/game/move (Session validated by wallet)       │  │
+│  │  - Looks up session by wallet address                    │  │
+│  │  - Validates session exists and not expired              │  │
 │  │  - Processes player move                                 │  │
 │  │  - Returns AI move + game state                          │  │
+│  │  - Invalidates session immediately on game end           │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │  Session Store (in-memory or Redis)                        ││
-│  │  - sessionId → { createdAt, expiresAt, gameState }         ││
+│  │  Session Store (in-memory Map)                             ││
+│  │  - walletAddress → { createdAt, expiresAt, gameState }     ││
 │  └─────────────────────────────────────────────────────────────┘│
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │  Game Engine (AI Logic)                                    ││
+│  │  Game Engine (Simple AI with occasional mistakes)          ││
 │  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -83,7 +90,9 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 ### 1. User Initiates Game
 
 ```
-User clicks "Start Game" → Client prepares x402 payment request
+User clicks "Start Game"
+    → If wallet not connected: prompt wallet connection
+    → If wallet connected: proceed to payment
 ```
 
 ### 2. Wallet Signs Payment
@@ -108,16 +117,20 @@ Headers: {
 
 ```
 x402 Middleware validates payment
-       → Payment valid: Create session, return sessionId
+       → Extract wallet address from payment
+       → Check if wallet has active session
+           → Yes: Return existing session (no new payment processed)
+           → No: Create new session, return session info
        → Payment invalid: Return 402 Payment Required
 ```
 
 ### 5. Game Play
 
 ```
-Client stores sessionId
-All subsequent /api/game/move calls include sessionId
-Server validates session before processing moves
+Client stores wallet address in sessionStorage
+All subsequent /api/game/move calls include wallet address
+Server looks up session by wallet address
+Game ends → Session immediately invalidated
 ```
 
 ---
@@ -128,23 +141,31 @@ Server validates session before processing moves
 
 | Property | Description |
 |----------|-------------|
-| `sessionId` | Unique identifier (UUID) |
+| `walletAddress` | Primary key - the paying wallet address |
 | `createdAt` | Timestamp of session creation |
 | `expiresAt` | createdAt + 5 minutes |
 | `gameState` | Current tic-tac-toe board state |
-| `status` | `active`, `completed`, `expired` |
+| `status` | `created`, `active`, `completed`, `expired` |
+| `playerFirst` | Boolean - whether player has played already |
 
 ### Session Lifecycle
 
-1. **Created**: After successful x402 payment
-2. **Active**: Player can make moves
-3. **Completed**: Game finished (win/lose/draw)
+1. **Created**: After successful x402 payment (or restored if active session exists)
+2. **Active**: Player has made at leas one move already.
+3. **Completed**: Game finished (win/lose/draw) → **Immediately invalidated**
 4. **Expired**: 5 minutes elapsed without completion
+
+### Key Behaviors
+
+- **One session per wallet**: A wallet can only have one active session at a time
+- **Session restoration**: If wallet has active session and clicks "Start Game", restore existing session (no payment taken)
+- **Immediate invalidation**: Session expired immediately when game ends, allowing new game
+- **Stale session handling**: If client has stale session (server cleared), prompt to start new game (pay again)
 
 ### Disconnection Handling
 
 - Session persists server-side for 5 minutes
-- Client can reconnect and resume game using stored sessionId
+- Client can reconnect using wallet address (looked up via sessionStorage)
 - Expired sessions are cleaned up periodically
 
 ---
@@ -153,47 +174,85 @@ Server validates session before processing moves
 
 ### `POST /api/session/start` (x402 Protected)
 
-**Payment**: Required (USDC on Base)
+**Payment**: Required (USDC on Base Sepolia)
+
+**Behavior**:
+- If wallet has active session → return existing session (payment not processed)
+- If no active session → create new session
 
 **Response**:
 ```json
 {
-  "sessionId": "uuid-v4",
-  "expiresAt": "ISO-8601 timestamp"
-}
-```
-
-### `POST /api/game/move` (Session Protected)
-
-**Request**:
-```json
-{
-  "sessionId": "uuid-v4",
-  "position": 0-8
-}
-```
-
-**Response**:
-```json
-{
-  "board": ["X", null, "O", ...],
-  "aiMove": 4,
-  "status": "ongoing|player_wins|ai_wins|draw",
-  "sessionValid": true
-}
-```
-
-### `GET /api/session/:sessionId` (Session Protected)
-
-**Response**:
-```json
-{
-  "sessionId": "uuid-v4",
-  "board": ["X", null, "O", ...],
+  "walletAddress": "0x...",
+  "board": [null, null, null, null, null, null, null, null, null],
+  "playerFirst": true,
+  "aiMove": null,
   "status": "active",
   "expiresAt": "ISO-8601 timestamp"
 }
 ```
+
+If AI moves first:
+```json
+{
+  "walletAddress": "0x...",
+  "board": [null, null, null, null, "O", null, null, null, null],
+  "playerFirst": false,
+  "aiMove": 4,
+  "status": "active",
+  "expiresAt": "ISO-8601 timestamp"
+}
+```
+
+### `POST /api/game/move`
+
+**Request**:
+```json
+{
+  "walletAddress": "0x...",
+  "position": 0-8
+}
+```
+
+**Response (success)**:
+```json
+{
+  "board": ["X", null, "O", ...],
+  "aiMove": 4,
+  "status": "ongoing|player_wins|ai_wins|draw"
+}
+```
+
+**Response (invalid move)** → 400 status, client shows error toast:
+```json
+{
+  "error": "Invalid move",
+  "message": "Cell is already occupied"
+}
+```
+
+**Response (no session)** → 404 status, client prompts new game:
+```json
+{
+  "error": "Session not found",
+  "message": "Please start a new game"
+}
+```
+
+### `GET /api/session/:walletAddress`
+
+**Response (active session)**:
+```json
+{
+  "walletAddress": "0x...",
+  "board": ["X", null, "O", ...],
+  "status": "active",
+  "playerFirst": true,
+  "expiresAt": "ISO-8601 timestamp"
+}
+```
+
+**Response (no session)** → 404 status
 
 ---
 
@@ -201,9 +260,9 @@ Server validates session before processing moves
 
 ### Server Configuration
 
-```javascript
+```typescript
 {
-  network: "base",
+  network: "base-sepolia",
   paymentToken: "USDC",
   paymentAddress: "<server-wallet-address>",
   pricePerGame: "0.01" // USDC
@@ -212,12 +271,29 @@ Server validates session before processing moves
 
 ### Client Configuration
 
-```javascript
+```typescript
 {
-  network: "base",
+  network: "base-sepolia",
   paymentToken: "USDC"
 }
 ```
+
+---
+
+## Error Handling
+
+| Scenario | Behavior |
+|----------|----------|
+| Payment succeeds, session creation fails | Hard crash (MVP) |
+| Invalid move (occupied cell, out of range) | 400 response, error toast on client |
+| Session not found / expired | 404 response, prompt to start new game |
+| x402 validation service down | Game unavailable |
+| Wallet not connected | Prompt connection on "Start Game" click |
+
+### Future Improvements (Post-MVP)
+
+- If payment succeeds but session fails, track wallet for retry on next request
+- Credit back wallets that paid but never made a move (after 5 min expiry)
 
 ---
 
@@ -226,14 +302,14 @@ Server validates session before processing moves
 ### Server-Side Protection
 
 1. **x402 Middleware**: Validates all payment headers on protected endpoints
-2. **Session Validation**: All game endpoints verify valid, non-expired session
-3. **Rate Limiting**: Prevent abuse of free endpoints
-4. **Session Binding**: Sessions tied to initial payment proof
+2. **Session-Wallet Binding**: Sessions tied to wallet address, preventing session theft
+3. **One Session Per Wallet**: Prevents abuse through multiple concurrent sessions
+4. **Rate Limiting**: Prevent abuse of endpoints
 
 ### Client-Side
 
-1. **Secure Session Storage**: Store sessionId in memory or sessionStorage (not localStorage)
-2. **Wallet Connection**: Only connect to wallet when payment needed
+1. **Secure Session Storage**: Store wallet address in sessionStorage (cleared on tab close)
+2. **Wallet Connection**: Only connect when "Start Game" is clicked
 
 ---
 
@@ -241,43 +317,59 @@ Server validates session before processing moves
 
 ```
 tic-tac-toe-x402/
-├── client/                 # React frontend
+├── client/                 # React frontend (TypeScript)
 │   ├── src/
 │   │   ├── components/
-│   │   │   ├── LandingPage.jsx
-│   │   │   ├── GameBoard.jsx
-│   │   │   └── WalletConnect.jsx
+│   │   │   ├── LandingPage.tsx
+│   │   │   ├── GameBoard.tsx
+│   │   │   └── WalletConnect.tsx
 │   │   ├── hooks/
-│   │   │   ├── useWallet.js
-│   │   │   └── useSession.js
+│   │   │   ├── useWallet.ts      # wagmi hooks
+│   │   │   └── useSession.ts
 │   │   ├── services/
-│   │   │   ├── api.js
-│   │   │   └── x402.js
-│   │   └── App.jsx
-│   └── package.json
+│   │   │   ├── api.ts
+│   │   │   └── x402.ts
+│   │   ├── App.tsx
+│   │   └── main.tsx
+│   ├── package.json
+│   ├── tsconfig.json
+│   └── vite.config.ts
 │
-├── server/                 # Express backend
+├── server/                 # Express backend (TypeScript)
 │   ├── src/
 │   │   ├── middleware/
-│   │   │   ├── x402.js
-│   │   │   └── session.js
+│   │   │   ├── x402.ts
+│   │   │   └── session.ts
 │   │   ├── routes/
-│   │   │   ├── session.js
-│   │   │   └── game.js
+│   │   │   ├── session.ts
+│   │   │   └── game.ts
 │   │   ├── services/
-│   │   │   ├── sessionStore.js
-│   │   │   └── gameEngine.js
-│   │   └── index.js
-│   └── package.json
+│   │   │   ├── sessionStore.ts   # In-memory Map
+│   │   │   └── gameEngine.ts     # Simple AI
+│   │   └── index.ts
+│   ├── package.json
+│   └── tsconfig.json
 │
 └── README.md
 ```
 
 ---
 
-## Open Questions / Decisions to Make
+## MVP Decisions Summary
 
-- [ ] Exact USDC price per game?
-- [ ] Session store: In-memory vs Redis?
-- [ ] AI difficulty level?
-- [ ] Use existing tic-tac-toe implementation or build from scratch?
+| Decision | Choice |
+|----------|--------|
+| Network | Base Sepolia |
+| Payment model | One payment = one game |
+| Session storage | In-memory (single server) |
+| Session binding | Bound to wallet address |
+| Sessions per wallet | One at a time |
+| Session expiry | 5 minutes |
+| First move | Random |
+| AI difficulty | Simple (allows mistakes) |
+| Horizontal scaling | Not supported |
+| Metrics/Observability | None |
+| Wallet connection | On-demand (after button click) |
+| Client framework | Plain React + Vite |
+| Wallet library | wagmi/viem |
+| Language | TypeScript (client & server) |
