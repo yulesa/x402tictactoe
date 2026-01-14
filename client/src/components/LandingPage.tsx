@@ -1,6 +1,7 @@
-import { useAccount, useConnect, useWalletClient } from 'wagmi';
+import { useAccount, useConnect, useConfig } from 'wagmi';
+import { getWalletClient, switchChain } from '@wagmi/core';
 import { baseSepolia } from 'wagmi/chains';
-import { useState, useEffect, useRef } from 'react';
+import { useState } from 'react';
 import { startSession } from '../services/api';
 import { fetchPaymentRequirements, createPaymentHeader } from '../services/x402';
 
@@ -15,46 +16,14 @@ interface LandingPageProps {
 
 export function LandingPage({ onGameStart }: LandingPageProps) {
   const { address, isConnected } = useAccount();
-  const { connect, connectors, isPending: isConnecting } = useConnect();
-  const { data: walletClient } = useWalletClient({ chainId: baseSepolia.id });
+  const { connectAsync, connectors, isPending: isConnecting } = useConnect();
+  const config = useConfig();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const pendingStartRef = useRef(false);
-
-  useEffect(() => {
-    console.log('[Wallet] State changed', { isConnected, address, hasWalletClient: !!walletClient });
-  }, [isConnected, address, walletClient]);
-
-  // Auto-start game when walletClient becomes available after user clicked start
-  useEffect(() => {
-    if (pendingStartRef.current && walletClient && address) {
-      console.log('[Wallet] walletClient now available, auto-starting game');
-      pendingStartRef.current = false;
-      startGame();
-    }
-  }, [walletClient, address]);
-
-  const startGame = async () => {
-    if (!address || !walletClient) return;
-
-    console.log('[Wallet] Starting game', { address });
-    setIsStarting(true);
-
-    try {
-      const requirements = await fetchPaymentRequirements();
-      const paymentHeader = await createPaymentHeader(walletClient, address, requirements);
-      const sessionData = await startSession(paymentHeader);
-      onGameStart(sessionData);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start game');
-    } finally {
-      setIsStarting(false);
-    }
-  };
 
   const handleStartGame = async () => {
     setError(null);
-    console.log('[Wallet] handleStartGame called', { isConnected, address, hasWalletClient: !!walletClient });
+    console.log('[Wallet] handleStartGame called', { isConnected, address });
 
     // Connect wallet if not connected
     if (!isConnected) {
@@ -63,26 +32,49 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
       if (injected) {
         try {
           console.log('[Wallet] Using connector:', injected.id);
-          pendingStartRef.current = true;
-          connect({ connector: injected });
+          const result = await connectAsync({ connector: injected });
+          console.log('[Wallet] Connected with address:', result.accounts[0]);
           return;
         } catch {
           console.error('[Wallet] Failed to connect');
-          pendingStartRef.current = false;
           setError('Failed to connect wallet');
           return;
         }
       }
     }
 
-    // If already connected but walletClient not ready, set pending flag and wait
-    if (!walletClient) {
-      console.log('[Wallet] Connected but walletClient not ready, waiting...');
-      pendingStartRef.current = true;
+    if (!address) {
+      setError('No wallet address found');
       return;
     }
 
-    await startGame();
+    setIsStarting(true);
+
+    try {
+      // Switch to baseSepolia if needed and get wallet client
+      console.log('[Wallet] Switching to baseSepolia chain...');
+      await switchChain(config, { chainId: baseSepolia.id });
+
+      console.log('[Wallet] Getting wallet client...');
+      const walletClient = await getWalletClient(config, { chainId: baseSepolia.id });
+      console.log('[Wallet] Got wallet client', { hasClient: !!walletClient });
+
+      if (!walletClient) {
+        setError('Failed to get wallet client');
+        return;
+      }
+
+      console.log('[Wallet] Starting game', { address });
+      const requirements = await fetchPaymentRequirements();
+      const paymentHeader = await createPaymentHeader(walletClient, address, requirements);
+      const sessionData = await startSession(paymentHeader);
+      onGameStart(sessionData);
+    } catch (err) {
+      console.error('[Wallet] Error:', err);
+      setError(err instanceof Error ? err.message : 'Failed to start game');
+    } finally {
+      setIsStarting(false);
+    }
   };
 
   return (
