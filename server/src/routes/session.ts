@@ -34,7 +34,6 @@ sessionRouter.post('/start', x402Middleware, (req: Request, res: Response) => {
   const session = createSession(walletAddress, playerFirst);
 
   console.log(`   🆕 New session created`);
-  console.log(`   ${playerFirst ? '👤 Player' : '🤖 Bot'} goes first`);
 
   let aiMove: number | null = null;
   if (!playerFirst) {
@@ -43,7 +42,6 @@ sessionRouter.post('/start', x402Middleware, (req: Request, res: Response) => {
     if (aiMove !== null) {
       session.gameState[aiMove] = 'O';
       updateSession(walletAddress, { gameState: session.gameState, status: 'active' });
-      console.log(`   🤖 Bot opening move: position ${aiMove}`);
     }
   }
 

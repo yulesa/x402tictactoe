@@ -139,29 +139,19 @@ export async function x402Middleware(
     req.walletAddress = paymentPayload.payload?.authorization?.from;
     console.log(`   Wallet address: ${req.walletAddress}`);
 
-    // Override res.json to settle payment after response
-    const originalJson = res.json.bind(res);
-    let settlementDone = false;
-
-    res.json = function (this: Response, body: unknown): Response {
-      if (!settlementDone) {
-        settlementDone = true;
-        console.log('💰 Settling payment on-chain...');
-
-        resourceServer
-          .settlePayment(paymentPayload, cachedRequirements!)
-          .then((settleResult: { transaction?: string; success?: boolean }) => {
-            console.log(`✅ Payment settled: ${settleResult.transaction || 'confirmed'}`);
-            const settlementHeader = Buffer.from(JSON.stringify(settleResult)).toString('base64');
-            res.setHeader('Payment-Response', settlementHeader);
-          })
-          .catch((err: unknown) => {
-            console.error(`❌ Settlement failed:`, err);
-          });
-      }
-
-      return originalJson(body);
-    };
+    // Settle payment before proceeding
+    console.log('💰 Settling payment on-chain...');
+    try {
+      const settleResult = await resourceServer.settlePayment(paymentPayload, cachedRequirements!);
+      console.log(`✅ Payment settled: ${settleResult.transaction || 'confirmed'}`);
+    } catch (err) {
+      console.error(`❌ Settlement failed:`, err);
+      res.status(500).json({
+        error: 'Payment Settlement Failed',
+        message: 'Payment was verified but settlement failed. Please try again.',
+      });
+      return;
+    }
 
     next();
   } catch (err) {
