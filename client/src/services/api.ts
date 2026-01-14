@@ -21,7 +21,7 @@ export async function startSession(paymentHeader: string): Promise<SessionRespon
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
-      'X-Payment': paymentHeader,
+      'Payment-Signature': paymentHeader,
     },
   });
 

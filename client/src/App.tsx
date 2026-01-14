@@ -1,5 +1,4 @@
 import { useState, useEffect } from 'react';
-import { useAccount } from 'wagmi';
 import { LandingPage } from './components/LandingPage';
 import { GameBoard } from './components/GameBoard';
 import { WalletConnect } from './components/WalletConnect';
@@ -16,7 +15,6 @@ interface GameState {
 }
 
 function App() {
-  const { address } = useAccount();
   const { walletAddress, saveWalletAddress, clearSession } = useSession();
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -93,7 +91,7 @@ function App() {
       case 'draw':
         return "It's a draw!";
       default:
-        return 'You\'re playing X.';
+        return 'Tic-Tac-Toe';
     }
   };
 
@@ -131,7 +129,7 @@ function App() {
 
             {!isGameOver && (
               <p className="hint">
-                You are X. {gameState.playerFirst ? 'You go first!' : 'AI went first.'}
+                You are playing X. {gameState.playerFirst ? 'You go first!' : 'AI went first.'}
               </p>
             )}
           </div>

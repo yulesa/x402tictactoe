@@ -9,10 +9,13 @@ export const sessionRouter = Router();
 sessionRouter.post('/start', x402Middleware, (req: Request, res: Response) => {
   const walletAddress = req.walletAddress!;
 
+  console.log(`\n🎮 Starting game session for wallet: ${walletAddress}`);
+
   // Check for existing active session
   const existingSession = getSession(walletAddress);
   if (existingSession && existingSession.status !== 'player_wins' &&
       existingSession.status !== 'ai_wins' && existingSession.status !== 'draw') {
+    console.log('   ♻️  Restoring existing session');
     // Return existing session
     res.json({
       walletAddress: existingSession.walletAddress,
@@ -30,6 +33,9 @@ sessionRouter.post('/start', x402Middleware, (req: Request, res: Response) => {
   const playerFirst = Math.random() > 0.5;
   const session = createSession(walletAddress, playerFirst);
 
+  console.log(`   🆕 New session created`);
+  console.log(`   ${playerFirst ? '👤 Player' : '🤖 AI'} goes first`);
+
   let aiMove: number | null = null;
   if (!playerFirst) {
     // AI moves first
@@ -37,8 +43,11 @@ sessionRouter.post('/start', x402Middleware, (req: Request, res: Response) => {
     if (aiMove !== null) {
       session.gameState[aiMove] = 'O';
       updateSession(walletAddress, { gameState: session.gameState, status: 'active' });
+      console.log(`   🤖 AI opening move: position ${aiMove}`);
     }
   }
+
+  console.log(`   ⏱️  Session expires at: ${session.expiresAt.toISOString()}`);
 
   res.json({
     walletAddress: session.walletAddress,

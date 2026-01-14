@@ -1,6 +1,8 @@
-import { useAccount, useConnect, useSignMessage } from 'wagmi';
-import { useState } from 'react';
+import { useAccount, useConnect, useWalletClient } from 'wagmi';
+import { baseSepolia } from 'wagmi/chains';
+import { useState, useEffect, useRef } from 'react';
 import { startSession } from '../services/api';
+import { fetchPaymentRequirements, createPaymentHeader } from '../services/x402';
 
 interface LandingPageProps {
   onGameStart: (sessionData: {
@@ -14,49 +16,73 @@ interface LandingPageProps {
 export function LandingPage({ onGameStart }: LandingPageProps) {
   const { address, isConnected } = useAccount();
   const { connect, connectors, isPending: isConnecting } = useConnect();
-  const { signMessageAsync } = useSignMessage();
+  const { data: walletClient } = useWalletClient({ chainId: baseSepolia.id });
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const pendingStartRef = useRef(false);
 
-  const handleStartGame = async () => {
-    setError(null);
+  useEffect(() => {
+    console.log('[Wallet] State changed', { isConnected, address, hasWalletClient: !!walletClient });
+  }, [isConnected, address, walletClient]);
 
-    // Step 1: Connect wallet if not connected
-    if (!isConnected) {
-      const injected = connectors.find(c => c.id === 'injected') || connectors[0];
-      if (injected) {
-        try {
-          connect({ connector: injected });
-          return; // Will re-render, user can click again
-        } catch {
-          setError('Failed to connect wallet');
-          return;
-        }
-      }
+  // Auto-start game when walletClient becomes available after user clicked start
+  useEffect(() => {
+    if (pendingStartRef.current && walletClient && address) {
+      console.log('[Wallet] walletClient now available, auto-starting game');
+      pendingStartRef.current = false;
+      startGame();
     }
+  }, [walletClient, address]);
 
-    if (!address) {
-      setError('Wallet not connected');
-      return;
-    }
+  const startGame = async () => {
+    if (!address || !walletClient) return;
 
+    console.log('[Wallet] Starting game', { address });
     setIsStarting(true);
 
     try {
-      // Step 2: Sign payment message (MVP: just sign a message to prove wallet ownership)
-      const message = `Start Tic-Tac-Toe game\nWallet: ${address}\nTimestamp: ${Date.now()}`;
-      const signature = await signMessageAsync({ message });
-
-      // Step 3: Call API with payment header
-      const paymentHeader = `wallet:${address}:sig:${signature}`;
+      const requirements = await fetchPaymentRequirements();
+      const paymentHeader = await createPaymentHeader(walletClient, address, requirements);
       const sessionData = await startSession(paymentHeader);
-
       onGameStart(sessionData);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to start game');
     } finally {
       setIsStarting(false);
     }
+  };
+
+  const handleStartGame = async () => {
+    setError(null);
+    console.log('[Wallet] handleStartGame called', { isConnected, address, hasWalletClient: !!walletClient });
+
+    // Connect wallet if not connected
+    if (!isConnected) {
+      console.log('[Wallet] Not connected, attempting to connect...');
+      const injected = connectors.find(c => c.id === 'injected') || connectors[0];
+      if (injected) {
+        try {
+          console.log('[Wallet] Using connector:', injected.id);
+          pendingStartRef.current = true;
+          connect({ connector: injected });
+          return;
+        } catch {
+          console.error('[Wallet] Failed to connect');
+          pendingStartRef.current = false;
+          setError('Failed to connect wallet');
+          return;
+        }
+      }
+    }
+
+    // If already connected but walletClient not ready, set pending flag and wait
+    if (!walletClient) {
+      console.log('[Wallet] Connected but walletClient not ready, waiting...');
+      pendingStartRef.current = true;
+      return;
+    }
+
+    await startGame();
   };
 
   return (

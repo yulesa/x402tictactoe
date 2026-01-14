@@ -13,7 +13,9 @@
     "react-dom": "^18.2.0",
     "wagmi": "^2.5.0",
     "viem": "^2.0.0",
-    "@tanstack/react-query": "^5.17.0"
+    "@tanstack/react-query": "^5.17.0",
+    "@x402/core": "^2.0.0",
+    "@x402/evm": "^2.0.0"
   },
   "devDependencies": {
     "@types/react": "^18.2.43",

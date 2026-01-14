@@ -1,14 +1,26 @@
 import { Request, Response, NextFunction } from 'express';
+import {
+  x402ResourceServer,
+  HTTPFacilitatorClient,
+  type ResourceConfig,
+} from '@x402/core/server';
+import { ExactEvmScheme } from '@x402/evm/exact/server';
+import type { PaymentRequirements } from '@x402/core/types';
 
-// x402 configuration
-export const x402Config = {
-  network: 'base-sepolia',
-  paymentToken: 'USDC',
-  paymentAddress: process.env.PAYMENT_ADDRESS || '0x0000000000000000000000000000000000000000',
-  pricePerGame: '0.01', // USDC
-};
+// x402 configuration (from environment variables)
+const FACILITATOR_URL = process.env.FACILITATOR_URL;
+const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS as `0x${string}`;
 
-// Extend Request to include wallet address from payment
+if (!FACILITATOR_URL) {
+  throw new Error('FACILITATOR_URL environment variable is required');
+}
+if (!PAYMENT_ADDRESS) {
+  throw new Error('PAYMENT_ADDRESS environment variable is required');
+}
+const PRICE_USD = '$0.01';
+const NETWORK = 'eip155:84532'; // Base Sepolia
+
+// Extend Request to include wallet address
 declare global {
   namespace Express {
     interface Request {
@@ -17,51 +29,151 @@ declare global {
   }
 }
 
-// MVP x402 middleware - validates payment header and extracts wallet address
-// In production, this would use the actual x402-express package for proper validation
-export function x402Middleware(req: Request, res: Response, next: NextFunction): void {
-  const paymentHeader = req.headers['x-payment'] as string;
+// Route payment configuration
+interface RoutePaymentConfig extends ResourceConfig {
+  description: string;
+  mimeType: string;
+}
+
+const routeConfig: RoutePaymentConfig = {
+  scheme: 'exact',
+  price: PRICE_USD,
+  network: NETWORK,
+  payTo: PAYMENT_ADDRESS,
+  description: 'Pay to start a new Tic-Tac-Toe game',
+  mimeType: 'application/json',
+};
+
+// Initialize the x402 resource server
+const facilitatorClient = new HTTPFacilitatorClient({ url: FACILITATOR_URL });
+const resourceServer = new x402ResourceServer(facilitatorClient).register(
+  NETWORK,
+  new ExactEvmScheme()
+);
+
+// Cached payment requirements
+let cachedRequirements: PaymentRequirements | null = null;
+
+// Initialize the resource server
+export async function initX402(): Promise<void> {
+  console.log('\n🔧 Initializing x402 Resource Server');
+  console.log(`   Payment address: ${PAYMENT_ADDRESS}`);
+  console.log(`   Facilitator: ${FACILITATOR_URL}`);
+  console.log(`   Network: ${NETWORK}`);
+  console.log(`   Price: ${PRICE_USD}\n`);
+
+  await resourceServer.initialize();
+
+  // Pre-build payment requirements
+  const requirements = await resourceServer.buildPaymentRequirements(routeConfig);
+  if (requirements.length === 0) {
+    throw new Error('Failed to build payment requirements');
+  }
+  cachedRequirements = requirements[0];
+
+  console.log('✅ x402 resource server initialized\n');
+}
+
+// Get payment requirements for the client
+export function getPaymentRequirements(): PaymentRequirements | null {
+  return cachedRequirements;
+}
+
+// x402 middleware for protected endpoints
+export async function x402Middleware(
+  req: Request,
+  res: Response,
+  next: NextFunction
+): Promise<void> {
+  console.log(`\n📥 Payment request received: ${req.method} ${req.path}`);
+
+  if (!cachedRequirements) {
+    console.log('❌ Payment requirements not initialized');
+    res.status(500).json({ error: 'Server not initialized' });
+    return;
+  }
+
+  // Check for payment header (v2: payment-signature, v1: x-payment)
+  const paymentHeader =
+    (req.headers['payment-signature'] as string) || (req.headers['x-payment'] as string);
 
   if (!paymentHeader) {
-    res.status(402).json({
+    console.log('💳 No payment provided, returning 402 Payment Required');
+
+    const paymentRequired = resourceServer.createPaymentRequiredResponse(
+      [cachedRequirements],
+      {
+        url: `${req.protocol}://${req.get('host')}${req.originalUrl}`,
+        description: routeConfig.description,
+        mimeType: routeConfig.mimeType,
+      }
+    );
+    const requirementsHeader = Buffer.from(JSON.stringify(paymentRequired)).toString('base64');
+
+    res.status(402);
+    res.setHeader('Payment-Required', requirementsHeader);
+    res.json({
       error: 'Payment Required',
-      message: 'x402 payment header missing',
-      paymentDetails: {
-        network: x402Config.network,
-        token: x402Config.paymentToken,
-        amount: x402Config.pricePerGame,
-        recipient: x402Config.paymentAddress,
-      },
+      message: 'Payment is required to start a game',
+      requirements: cachedRequirements,
     });
     return;
   }
 
   try {
-    // MVP: Extract wallet address from payment header
-    // Format expected: "wallet:<address>:signature:<sig>"
-    // In production, this would validate the signature using x402 protocol
-    const parts = paymentHeader.split(':');
-    if (parts.length >= 2 && parts[0] === 'wallet') {
-      req.walletAddress = parts[1];
-      next();
+    console.log('🔐 Payment header received, verifying with facilitator...');
+
+    // Decode and verify the payment
+    const paymentPayload = JSON.parse(Buffer.from(paymentHeader, 'base64').toString('utf-8'));
+    console.log(`   From wallet: ${paymentPayload.payload?.authorization?.from || 'unknown'}`);
+
+    const verifyResult = await resourceServer.verifyPayment(paymentPayload, cachedRequirements);
+
+    if (!verifyResult.isValid) {
+      console.log(`❌ Payment verification failed: ${verifyResult.invalidReason}`);
+      res.status(402).json({
+        error: 'Payment Invalid',
+        message: verifyResult.invalidReason || 'Payment verification failed',
+      });
       return;
     }
 
-    // Also accept just a wallet address for testing
-    if (paymentHeader.startsWith('0x') && paymentHeader.length === 42) {
-      req.walletAddress = paymentHeader;
-      next();
-      return;
-    }
+    console.log('✅ Payment verified successfully');
 
+    // Extract wallet address from the payment payload
+    req.walletAddress = paymentPayload.payload?.authorization?.from;
+    console.log(`   Wallet address: ${req.walletAddress}`);
+
+    // Override res.json to settle payment after response
+    const originalJson = res.json.bind(res);
+    let settlementDone = false;
+
+    res.json = function (this: Response, body: unknown): Response {
+      if (!settlementDone) {
+        settlementDone = true;
+        console.log('💰 Settling payment on-chain...');
+
+        resourceServer
+          .settlePayment(paymentPayload, cachedRequirements!)
+          .then((settleResult: { transaction?: string; success?: boolean }) => {
+            console.log(`✅ Payment settled: ${settleResult.transaction || 'confirmed'}`);
+            const settlementHeader = Buffer.from(JSON.stringify(settleResult)).toString('base64');
+            res.setHeader('Payment-Response', settlementHeader);
+          })
+          .catch((err: unknown) => {
+            console.error(`❌ Settlement failed:`, err);
+          });
+      }
+
+      return originalJson(body);
+    };
+
+    next();
+  } catch (err) {
+    console.error('❌ Payment processing error:', err);
     res.status(402).json({
-      error: 'Invalid Payment',
-      message: 'Payment header format invalid',
-    });
-  } catch {
-    res.status(402).json({
-      error: 'Payment Validation Failed',
-      message: 'Could not validate payment',
+      error: 'Payment Processing Error',
+      message: err instanceof Error ? err.message : 'Failed to process payment',
     });
   }
 }
