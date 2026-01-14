@@ -1,4 +1,4 @@
-import { useAccount, useConnect, useConfig } from 'wagmi';
+import { useAccount, useConnect, useConfig, useDisconnect } from 'wagmi';
 import { getWalletClient, switchChain } from '@wagmi/core';
 import { baseSepolia } from 'wagmi/chains';
 import { useState } from 'react';
@@ -17,9 +17,46 @@ interface LandingPageProps {
 export function LandingPage({ onGameStart }: LandingPageProps) {
   const { address, isConnected } = useAccount();
   const { connectAsync, connectors, isPending: isConnecting } = useConnect();
+  const { disconnectAsync } = useDisconnect();
   const config = useConfig();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  const connectWallet = async (): Promise<boolean> => {
+    const injected = connectors.find(c => c.id === 'injected') || connectors[0];
+    if (!injected) {
+      setError('No wallet connector found');
+      return false;
+    }
+
+    console.log('[Wallet] Using connector:', injected.id);
+
+    try {
+      const result = await connectAsync({ connector: injected });
+      console.log('[Wallet] Connected with address:', result.accounts[0]);
+      return true;
+    } catch (err) {
+      // If not a "Connector already connected" error, fail immediately, else try reconnecting
+      if (!(err instanceof Error && err.message.includes('Connector already connected'))) {
+        console.error('[Wallet] Failed to connect:', err);
+        setError(err instanceof Error ? err.message : 'Failed to connect wallet');
+        return false;
+      }
+    }
+
+    // Connector already connected - reconnecting: properly disconnect first, then retry
+    console.log('[Wallet] Connector already connected, disconnecting first...');
+    try {
+      await disconnectAsync();
+      const result = await connectAsync({ connector: injected });
+      console.log('[Wallet] Reconnected with address:', result.accounts[0]);
+      return true;
+    } catch (err) {
+      console.error('[Wallet] Failed to reconnect:', err);
+      setError(err instanceof Error ? err.message : 'Failed to reconnect wallet');
+      return false;
+    }
+  };
 
   const handleStartGame = async () => {
     setError(null);
@@ -28,19 +65,9 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
     // Connect wallet if not connected
     if (!isConnected) {
       console.log('[Wallet] Not connected, attempting to connect...');
-      const injected = connectors.find(c => c.id === 'injected') || connectors[0];
-      if (injected) {
-        try {
-          console.log('[Wallet] Using connector:', injected.id);
-          const result = await connectAsync({ connector: injected });
-          console.log('[Wallet] Connected with address:', result.accounts[0]);
-          return;
-        } catch {
-          console.error('[Wallet] Failed to connect');
-          setError('Failed to connect wallet');
-          return;
-        }
-      }
+      const connected = await connectWallet();
+      if (!connected) return;
+      return; // User needs to click again after connecting
     }
 
     if (!address) {
