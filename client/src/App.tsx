@@ -87,7 +87,7 @@ function App() {
       case 'player_wins':
         return 'You win!';
       case 'ai_wins':
-        return 'AI wins!';
+        return 'Bot wins!';
       case 'draw':
         return "It's a draw!";
       default:
@@ -129,7 +129,7 @@ function App() {
 
             {!isGameOver && (
               <p className="hint">
-                You are playing X. {gameState.playerFirst ? 'You go first!' : 'AI went first.'}
+                You are playing X. {gameState.playerFirst ? 'You go first!' : 'Bot went first.'}
               </p>
             )}
           </div>

@@ -4,18 +4,13 @@ import cors from 'cors';
 import { sessionRouter } from './routes/session.js';
 import { gameRouter } from './routes/game.js';
 import { cleanupExpiredSessions } from './services/sessionStore.js';
-import { initX402, getPaymentRequirements } from './middleware/x402.js';
+import { initX402 } from './middleware/x402.js';
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
 app.use(cors());
 app.use(express.json());
-
-// Payment requirements endpoint (client fetches this before making payment)
-app.get('/api/payment-requirements', (_req, res) => {
-  res.json(getPaymentRequirements());
-});
 
 // Routes
 app.use('/api/session', sessionRouter);

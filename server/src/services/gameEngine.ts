@@ -31,7 +31,7 @@ function getEmptyCells(board: CellValue[]): number[] {
   return board.map((cell, idx) => cell === null ? idx : -1).filter(idx => idx !== -1);
 }
 
-// Simple AI that sometimes makes mistakes for better UX
+// Simple Bot that sometimes makes mistakes for better UX
 export function getAIMove(board: CellValue[]): number | null {
   const emptyCells = getEmptyCells(board);
   if (emptyCells.length === 0) return null;

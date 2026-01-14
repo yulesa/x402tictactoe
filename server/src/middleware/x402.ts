@@ -74,11 +74,6 @@ export async function initX402(): Promise<void> {
   console.log('✅ x402 resource server initialized\n');
 }
 
-// Get payment requirements for the client
-export function getPaymentRequirements(): PaymentRequirements | null {
-  return cachedRequirements;
-}
-
 // x402 middleware for protected endpoints
 export async function x402Middleware(
   req: Request,

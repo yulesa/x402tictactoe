@@ -34,7 +34,7 @@ Open http://localhost:5173 in your browser.
 
 1. **Connect Wallet** - Click "Connect Wallet & Play" to connect your browser wallet
 2. **Sign Payment** - Sign a message to authorize the 0.01 USDC payment
-3. **Play** - Make moves on the 3x3 grid. You are always playing X, AI is O
+3. **Play** - Make moves on the 3x3 grid. You are always playing X, Bot is O
 4. **Game Over** - Win, lose, or draw. Pay again to play another game
 
 ## Project Structure
@@ -50,7 +50,7 @@ Open http://localhost:5173 in your browser.
 │       │   └── game.ts     # Game moves
 │       └── services/
 │           ├── sessionStore.ts  # In-memory sessions
-│           └── gameEngine.ts    # AI logic
+│           └── gameEngine.ts    # Bot logic
 │
 └── client/                 # React frontend (TypeScript)
     └── src/

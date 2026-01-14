@@ -2,8 +2,8 @@ import { useAccount, useConnect, useConfig, useDisconnect } from 'wagmi';
 import { getWalletClient, switchChain } from '@wagmi/core';
 import { baseSepolia } from 'wagmi/chains';
 import { useState } from 'react';
-import { startSession } from '../services/api';
-import { fetchPaymentRequirements, createPaymentHeader } from '../services/x402';
+import { tryStartSession, startSessionWithPayment } from '../services/api';
+import { extractPaymentRequired, createPaymentHeader } from '../services/x402';
 
 interface LandingPageProps {
   onGameStart: (sessionData: {
@@ -79,12 +79,8 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
 
     try {
       // Switch to baseSepolia if needed and get wallet client
-      console.log('[Wallet] Switching to baseSepolia chain...');
       await switchChain(config, { chainId: baseSepolia.id });
-
-      console.log('[Wallet] Getting wallet client...');
       const walletClient = await getWalletClient(config, { chainId: baseSepolia.id });
-      console.log('[Wallet] Got wallet client', { hasClient: !!walletClient });
 
       if (!walletClient) {
         setError('Failed to get wallet client');
@@ -92,9 +88,28 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
       }
 
       console.log('[Wallet] Starting game', { address });
-      const requirements = await fetchPaymentRequirements();
-      const paymentHeader = await createPaymentHeader(walletClient, address, requirements);
-      const sessionData = await startSession(paymentHeader);
+
+      // First, try to start session without payment - this will return 402 with requirements
+      const initialResponse = await tryStartSession();
+
+      if (initialResponse.status !== 402) {
+        // Unexpected response - session might already exist or other error
+        if (initialResponse.ok) {
+          const sessionData = await initialResponse.json();
+          onGameStart(sessionData);
+          return;
+        }
+        const error = await initialResponse.json();
+        throw new Error(error.message || 'Unexpected response from server');
+      }
+
+      // Extract payment requirements from 402 response
+      const paymentRequired = extractPaymentRequired(initialResponse);
+      console.log('[x402] Payment required, signing payment...');
+
+      // Create payment header and retry request
+      const paymentHeader = await createPaymentHeader(walletClient, address, paymentRequired);
+      const sessionData = await startSessionWithPayment(paymentHeader);
       onGameStart(sessionData);
     } catch (err) {
       console.error('[Wallet] Error:', err);

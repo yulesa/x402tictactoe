@@ -17,9 +17,9 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 
 ## Game Mode
 
-- **Player vs AI**: Single player games against a server-side AI opponent
-- **First Move**: Random (player or AI)
-- **AI Difficulty**: Simple (allows mistakes for better UX)
+- **Player vs Bot**: Single player games against a server-side Bot opponent
+- **First Move**: Random (player or Bot)
+- **Bot Difficulty**: Simple (allows mistakes for better UX)
 
 ---
 
@@ -68,7 +68,7 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 │  │  - Looks up session by wallet address                    │  │
 │  │  - Validates session exists and not expired              │  │
 │  │  - Processes player move                                 │  │
-│  │  - Returns AI move + game state                          │  │
+│  │  - Returns Bot move + game state                          │  │
 │  │  - Invalidates session immediately on game end           │  │
 │  └──────────────────────────────────────────────────────────┘  │
 │                                                                 │
@@ -78,7 +78,7 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 │  └─────────────────────────────────────────────────────────────┘│
 │                                                                 │
 │  ┌─────────────────────────────────────────────────────────────┐│
-│  │  Game Engine (Simple AI with occasional mistakes)          ││
+│  │  Game Engine (Simple Bot with occasional mistakes)          ││
 │  └─────────────────────────────────────────────────────────────┘│
 └─────────────────────────────────────────────────────────────────┘
 ```
@@ -192,7 +192,7 @@ Game ends → Session immediately invalidated
 }
 ```
 
-If AI moves first:
+If Bot moves first:
 ```json
 {
   "walletAddress": "0x...",
@@ -345,7 +345,7 @@ tic-tac-toe-x402/
 │   │   │   └── game.ts
 │   │   ├── services/
 │   │   │   ├── sessionStore.ts   # In-memory Map
-│   │   │   └── gameEngine.ts     # Simple AI
+│   │   │   └── gameEngine.ts     # Simple Bot
 │   │   └── index.ts
 │   ├── package.json
 │   └── tsconfig.json
@@ -366,7 +366,7 @@ tic-tac-toe-x402/
 | Sessions per wallet | One at a time |
 | Session expiry | 5 minutes |
 | First move | Random |
-| AI difficulty | Simple (allows mistakes) |
+| Bot difficulty | Simple (allows mistakes) |
 | Horizontal scaling | Not supported |
 | Metrics/Observability | None |
 | Wallet connection | On-demand (after button click) |

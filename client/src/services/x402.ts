@@ -1,29 +1,17 @@
 import { x402Client } from '@x402/core/client';
 import { encodePaymentSignatureHeader } from '@x402/core/http';
 import { ExactEvmScheme } from '@x402/evm/exact/client';
-import type { PaymentRequirements, PaymentRequired } from '@x402/core/types';
+import type { PaymentRequired } from '@x402/core/types';
 import type { WalletClient } from 'viem';
 
-// Fetch payment requirements from the server
-export async function fetchPaymentRequirements(): Promise<PaymentRequirements> {
-  const response = await fetch('/api/payment-requirements');
-  if (!response.ok) {
-    throw new Error('Failed to fetch payment requirements');
+// Extract payment requirements from a 402 response
+export function extractPaymentRequired(response: Response): PaymentRequired {
+  const paymentRequiredHeader = response.headers.get('Payment-Required');
+  if (!paymentRequiredHeader) {
+    throw new Error('No Payment-Required header in 402 response');
   }
-  return response.json();
-}
-
-// Build a PaymentRequired object from PaymentRequirements
-function buildPaymentRequired(requirements: PaymentRequirements): PaymentRequired {
-  return {
-    x402Version: 2,
-    resource: {
-      url: window.location.origin + '/api/session/start',
-      description: 'Pay to start a new Tic-Tac-Toe game',
-      mimeType: 'application/json',
-    },
-    accepts: [requirements],
-  };
+  const paymentRequired = JSON.parse(atob(paymentRequiredHeader)) as PaymentRequired;
+  return paymentRequired;
 }
 
 // Create a wagmi-compatible EVM signer for the x402 client
@@ -57,10 +45,13 @@ function createWagmiEvmSigner(walletClient: WalletClient, address: `0x${string}`
 export async function createPaymentHeader(
   walletClient: WalletClient,
   address: `0x${string}`,
-  requirements: PaymentRequirements
+  paymentRequired: PaymentRequired
 ): Promise<string> {
   // Create the wagmi-compatible signer
   const signer = createWagmiEvmSigner(walletClient, address);
+
+  // Use the first payment option from the accepts array
+  const requirements = paymentRequired.accepts[0];
 
   // Create the x402 client with our signer
   // The selector just returns the requirements since we only have one option
@@ -68,9 +59,6 @@ export async function createPaymentHeader(
     'eip155:*',
     new ExactEvmScheme(signer)
   );
-
-  // Build the full PaymentRequired object from the requirements
-  const paymentRequired = buildPaymentRequired(requirements);
 
   // Create the payment payload (this will trigger wallet signature)
   const paymentPayload = await client.createPaymentPayload(paymentRequired);

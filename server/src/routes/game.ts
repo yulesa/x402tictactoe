@@ -17,7 +17,6 @@ gameRouter.post('/move', (req: Request, res: Response) => {
   }
 
   console.log(`\n🎯 Move received from ${walletAddress.slice(0, 8)}...`);
-  console.log(`   👤 Player move: position ${position}`);
 
   const session = getSession(walletAddress);
   if (!session) {
@@ -61,13 +60,12 @@ gameRouter.post('/move', (req: Request, res: Response) => {
   let status = getGameStatus(session.gameState);
   let aiMove: number | null = null;
 
-  // If game is not over, AI makes a move
+  // If game is not over, Bot makes a move
   if (status === 'active') {
     aiMove = getAIMove(session.gameState);
     if (aiMove !== null) {
       session.gameState[aiMove] = 'O';
       status = getGameStatus(session.gameState);
-      console.log(`   🤖 AI move: position ${aiMove}`);
     }
   }
 
@@ -80,7 +78,7 @@ gameRouter.post('/move', (req: Request, res: Response) => {
     console.log('   🏆 Player wins!');
     deleteSession(walletAddress);
   } else if (status === 'ai_wins') {
-    console.log('   🤖 AI wins!');
+    console.log('   🤖 Bot wins!');
     deleteSession(walletAddress);
   } else if (status === 'draw') {
     console.log('   🤝 Draw!');
@@ -89,8 +87,7 @@ gameRouter.post('/move', (req: Request, res: Response) => {
 
   // Display board state
   const board = session.gameState;
-  console.log(`   Board: ${board[0] || '-'}|${board[1] || '-'}|${board[2] || '-'} ${board[3] || '-'}|${board[4] || '-'}|${board[5] || '-'} ${board[6] || '-'}|${board[7] || '-'}|${board[8] || '-'}`);
-
+  
   res.json({
     board: session.gameState,
     aiMove,

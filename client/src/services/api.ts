@@ -16,7 +16,18 @@ export interface MoveResponse {
   status: string;
 }
 
-export async function startSession(paymentHeader: string): Promise<SessionResponse> {
+// Try to start a session without payment (will return 402 with requirements)
+export async function tryStartSession(): Promise<Response> {
+  return fetch(`${API_BASE}/session/start`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+  });
+}
+
+// Start session with payment header
+export async function startSessionWithPayment(paymentHeader: string): Promise<SessionResponse> {
   const response = await fetch(`${API_BASE}/session/start`, {
     method: 'POST',
     headers: {
