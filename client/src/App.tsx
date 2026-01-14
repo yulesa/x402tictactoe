@@ -3,6 +3,7 @@ import { LandingPage } from './components/LandingPage';
 import { GameBoard } from './components/GameBoard';
 import { WalletConnect } from './components/WalletConnect';
 import { useSession } from './hooks/useSession';
+import { useGameStart, GameSessionData } from './hooks/useGameStart';
 import { makeMove, getSession } from './services/api';
 import './App.css';
 
@@ -16,6 +17,7 @@ interface GameState {
 
 function App() {
   const { walletAddress, saveWalletAddress, clearSession } = useSession();
+  const { startGame, isStarting, error: startError } = useGameStart();
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -37,15 +39,10 @@ function App() {
     }
   }, [walletAddress, gameState, clearSession]);
 
-  const handleGameStart = (sessionData: {
-    walletAddress: string;
-    board: (string | null)[];
-    playerFirst: boolean;
-    status: string;
-  }) => {
+  const handleGameStart = (sessionData: GameSessionData) => {
     saveWalletAddress(sessionData.walletAddress);
     setGameState({
-      board: sessionData.board as CellValue[],
+      board: sessionData.board,
       status: sessionData.status,
       playerFirst: sessionData.playerFirst,
     });
@@ -64,11 +61,6 @@ function App() {
         board: result.board as CellValue[],
         status: result.status,
       });
-
-      // Clear session if game is over
-      if (['player_wins', 'ai_wins', 'draw'].includes(result.status)) {
-        clearSession();
-      }
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to make move');
     } finally {
@@ -76,9 +68,17 @@ function App() {
     }
   };
 
-  const handleNewGame = () => {
-    setGameState(null);
-    clearSession();
+  const handlePlayAgain = async () => {
+    setError(null);
+    const sessionData = await startGame();
+    if (sessionData) {
+      saveWalletAddress(sessionData.walletAddress);
+      setGameState({
+        board: sessionData.board,
+        status: sessionData.status,
+        playerFirst: sessionData.playerFirst,
+      });
+    }
   };
 
   const getStatusMessage = () => {
@@ -96,6 +96,7 @@ function App() {
   };
 
   const isGameOver = gameState && ['player_wins', 'ai_wins', 'draw'].includes(gameState.status);
+  const displayError = error || startError;
 
   return (
     <div className="app">
@@ -116,14 +117,18 @@ function App() {
             <GameBoard
               board={gameState.board}
               onCellClick={handleCellClick}
-              disabled={isLoading || isGameOver!}
+              disabled={isLoading || isStarting || isGameOver!}
             />
 
-            {error && <p className="error">{error}</p>}
+            {displayError && <p className="error">{displayError}</p>}
 
             {isGameOver && (
-              <button onClick={handleNewGame} className="new-game-btn">
-                Play Again (0.01 USD)
+              <button
+                onClick={handlePlayAgain}
+                disabled={isStarting}
+                className="new-game-btn"
+              >
+                {isStarting ? 'Starting...' : 'Play Again (0.01 USD)'}
               </button>
             )}
 
