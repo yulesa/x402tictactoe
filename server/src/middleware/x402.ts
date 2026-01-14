@@ -6,6 +6,7 @@ import {
 } from '@x402/core/server';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
 import type { PaymentRequirements } from '@x402/core/types';
+import { getSession } from '../services/sessionStore.js';
 
 // x402 configuration (from environment variables)
 const FACILITATOR_URL = process.env.FACILITATOR_URL;
@@ -105,12 +106,30 @@ export async function x402Middleware(
     );
     const requirementsHeader = Buffer.from(JSON.stringify(paymentRequired)).toString('base64');
 
+    // Check if client provided a wallet address hint for session lookup
+    const hintWalletAddress = req.body?.walletAddress as string | undefined;
+    let existingSessionInfo: { hasExistingSession: boolean; expiresAt?: string } = {
+      hasExistingSession: false,
+    };
+
+    if (hintWalletAddress) {
+      const existingSession = getSession(hintWalletAddress);
+      if (existingSession && !['player_wins', 'ai_wins', 'draw'].includes(existingSession.status)) {
+        console.log(`   ℹ️  Found existing session for wallet hint: ${hintWalletAddress}`);
+        existingSessionInfo = {
+          hasExistingSession: true,
+          expiresAt: existingSession.expiresAt.toISOString(),
+        };
+      }
+    }
+
     res.status(402);
     res.setHeader('Payment-Required', requirementsHeader);
     res.json({
       error: 'Payment Required',
       message: 'Payment is required to start a game',
       requirements: cachedRequirements,
+      ...existingSessionInfo,
     });
     return;
   }
@@ -135,22 +154,33 @@ export async function x402Middleware(
 
     console.log('✅ Payment verified successfully');
 
-    // Extract wallet address from the payment payload
+    // Extract wallet address from the payment payload (this is the trusted source)
     req.walletAddress = paymentPayload.payload?.authorization?.from;
     console.log(`   Wallet address: ${req.walletAddress}`);
 
-    // Settle payment before proceeding
-    console.log('💰 Settling payment on-chain...');
-    try {
-      const settleResult = await resourceServer.settlePayment(paymentPayload, cachedRequirements!);
-      console.log(`✅ Payment settled: ${settleResult.transaction || 'confirmed'}`);
-    } catch (err) {
-      console.error(`❌ Settlement failed:`, err);
-      res.status(500).json({
-        error: 'Payment Settlement Failed',
-        message: 'Payment was verified but settlement failed. Please try again.',
-      });
-      return;
+    // Check if this wallet has an existing active session (for session restoration)
+    // This check uses the verified wallet from the payment signature, not any client hint
+    const existingSession = req.walletAddress ? getSession(req.walletAddress) : null;
+    const isRestoringSession = existingSession &&
+      !['player_wins', 'ai_wins', 'draw'].includes(existingSession.status);
+
+    if (isRestoringSession) {
+      // Skip settlement for session restoration - user is just proving wallet ownership
+      console.log('♻️  Restoring existing session - skipping payment settlement');
+    } else {
+      // Settle payment before proceeding (new session)
+      console.log('💰 Settling payment on-chain...');
+      try {
+        const settleResult = await resourceServer.settlePayment(paymentPayload, cachedRequirements!);
+        console.log(`✅ Payment settled: ${settleResult.transaction || 'confirmed'}`);
+      } catch (err) {
+        console.error(`❌ Settlement failed:`, err);
+        res.status(500).json({
+          error: 'Payment Settlement Failed',
+          message: 'Payment was verified but settlement failed. Please try again.',
+        });
+        return;
+      }
     }
 
     next();

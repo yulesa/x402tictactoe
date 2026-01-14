@@ -21,6 +21,7 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
   const config = useConfig();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [sessionRestoreWarning, setSessionRestoreWarning] = useState<string | null>(null);
 
   const connectWallet = async (): Promise<boolean> => {
     const injected = connectors.find(c => c.id === 'injected') || connectors[0];
@@ -76,6 +77,7 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
     }
 
     setIsStarting(true);
+    setSessionRestoreWarning(null);
 
     try {
       // Switch to baseSepolia if needed and get wallet client
@@ -90,7 +92,8 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
       console.log('[Wallet] Starting game', { address });
 
       // First, try to start session without payment - this will return 402 with requirements
-      const initialResponse = await tryStartSession();
+      // Pass wallet address as a hint so server can check for existing sessions
+      const initialResponse = await tryStartSession(address);
 
       if (initialResponse.status !== 402) {
         // Unexpected response - session might already exist or other error
@@ -101,6 +104,15 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
         }
         const error = await initialResponse.json();
         throw new Error(error.message || 'Unexpected response from server');
+      }
+
+      // Check if server indicated an existing session for this wallet
+      const responseBody = await initialResponse.clone().json();
+      if (responseBody.hasExistingSession) {
+        console.log('[x402] Existing session found, will restore without charging');
+        setSessionRestoreWarning(
+          "There is a session open for your wallet. You're still required to sign to prove wallet ownership. You won't be charged for session restorations."
+        );
       }
 
       // Extract payment requirements from 402 response
@@ -147,6 +159,10 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
         <p className="wallet-status">
           Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
         </p>
+      )}
+
+      {sessionRestoreWarning && (
+        <p className="warning">{sessionRestoreWarning}</p>
       )}
 
       {error && <p className="error">{error}</p>}

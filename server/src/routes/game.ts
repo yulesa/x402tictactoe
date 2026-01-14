@@ -85,9 +85,6 @@ gameRouter.post('/move', (req: Request, res: Response) => {
     deleteSession(walletAddress);
   }
 
-  // Display board state
-  const board = session.gameState;
-  
   res.json({
     board: session.gameState,
     aiMove,

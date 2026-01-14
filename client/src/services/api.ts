@@ -17,12 +17,14 @@ export interface MoveResponse {
 }
 
 // Try to start a session without payment (will return 402 with requirements)
-export async function tryStartSession(): Promise<Response> {
+// If walletAddress is provided, server will check for existing session and include info in 402 response
+export async function tryStartSession(walletAddress?: string): Promise<Response> {
   return fetch(`${API_BASE}/session/start`, {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
     },
+    body: walletAddress ? JSON.stringify({ walletAddress }) : undefined,
   });
 }
 
