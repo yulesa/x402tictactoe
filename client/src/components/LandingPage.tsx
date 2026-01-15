@@ -1,4 +1,5 @@
 import { useAccount } from 'wagmi';
+import { useConnectModal } from '@rainbow-me/rainbowkit';
 import { useGameStart, GameSessionData } from '../hooks/useGameStart';
 
 interface LandingPageProps {
@@ -7,15 +8,21 @@ interface LandingPageProps {
 
 export function LandingPage({ onGameStart }: LandingPageProps) {
   const { address, isConnected } = useAccount();
+  const { openConnectModal } = useConnectModal();
   const {
     startGame,
     isStarting,
-    isConnecting,
     error,
     signingWarning,
   } = useGameStart();
 
   const handleStartGame = async () => {
+    // If not connected, open the RainbowKit modal
+    if (!isConnected && openConnectModal) {
+      openConnectModal();
+      return;
+    }
+
     const sessionData = await startGame();
     if (sessionData) {
       onGameStart(sessionData);
@@ -34,12 +41,10 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
 
       <button
         onClick={handleStartGame}
-        disabled={isStarting || isConnecting}
+        disabled={isStarting}
         className="start-btn"
       >
-        {isConnecting
-          ? 'Connecting Wallet...'
-          : isStarting
+        {isStarting
           ? 'Starting Game...'
           : isConnected
           ? 'Start Game (0.01 USD)'
