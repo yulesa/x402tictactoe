@@ -60,7 +60,7 @@ sessionRouter.post('/start', x402Middleware, (req: Request, res: Response) => {
 
 // GET /api/session/:walletAddress - check session status
 sessionRouter.get('/:walletAddress', (req: Request, res: Response) => {
-  const { walletAddress } = req.params;
+  const walletAddress = req.params.walletAddress as string;
   const session = getSession(walletAddress);
 
   if (!session) {
