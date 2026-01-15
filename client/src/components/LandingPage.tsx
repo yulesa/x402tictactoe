@@ -12,7 +12,7 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
     isStarting,
     isConnecting,
     error,
-    sessionRestoreWarning,
+    signingWarning,
   } = useGameStart();
 
   const handleStartGame = async () => {
@@ -52,8 +52,8 @@ export function LandingPage({ onGameStart }: LandingPageProps) {
         </p>
       )}
 
-      {sessionRestoreWarning && (
-        <p className="warning">{sessionRestoreWarning}</p>
+      {signingWarning && (
+        <p className="warning">{signingWarning}</p>
       )}
 
       {error && <p className="error">{error}</p>}

@@ -19,7 +19,7 @@ interface UseGameStartReturn {
   isStarting: boolean;
   isConnecting: boolean;
   error: string | null;
-  sessionRestoreWarning: string | null;
+  signingWarning: string | null;
   clearError: () => void;
 }
 
@@ -30,7 +30,7 @@ export function useGameStart(): UseGameStartReturn {
   const config = useConfig();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [sessionRestoreWarning, setSessionRestoreWarning] = useState<string | null>(null);
+  const [signingWarning, setSigningWarning] = useState<string | null>(null);
 
   const connectWallet = async (): Promise<`0x${string}` | null> => {
     const injected = connectors.find(c => c.id === 'injected') || connectors[0];
@@ -83,7 +83,7 @@ export function useGameStart(): UseGameStartReturn {
     }
 
     setIsStarting(true);
-    setSessionRestoreWarning(null);
+    setSigningWarning(null);
 
     try {
       // Switch to baseSepolia if needed and get wallet client
@@ -120,9 +120,12 @@ export function useGameStart(): UseGameStartReturn {
       const responseBody = await initialResponse.clone().json();
       if (responseBody.hasExistingSession) {
         console.log('[x402] Existing session found, will restore without charging');
-        setSessionRestoreWarning(
-          "There is a session open for your wallet. You're still required to sign to prove wallet ownership. You won't be charged for session restorations."
+        setSigningWarning(
+          "There is a session open for your wallet. You're required to sign, proving wallet ownership. You won't be charged for session restorations."
         );
+      } else {
+        // Show signing warning for new payment
+        setSigningWarning("You're required to sign, approving the payment in your wallet.");
       }
 
       // Extract payment requirements from 402 response
@@ -131,6 +134,9 @@ export function useGameStart(): UseGameStartReturn {
 
       // Create payment header and retry request
       const paymentHeader = await createPaymentHeader(walletClient, walletAddress, paymentRequired);
+
+      // Clear signing warning after successful signature
+      setSigningWarning(null);
       const sessionData = await startSessionWithPayment(paymentHeader);
 
       return {
@@ -155,7 +161,7 @@ export function useGameStart(): UseGameStartReturn {
     isStarting,
     isConnecting,
     error,
-    sessionRestoreWarning,
+    signingWarning,
     clearError,
   };
 }
