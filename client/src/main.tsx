@@ -1,7 +1,7 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
 import { WagmiProvider, http, createConfig } from 'wagmi';
-import { baseSepolia } from 'wagmi/chains';
+import { base, baseSepolia } from 'wagmi/chains';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import '@rainbow-me/rainbowkit/styles.css';
 import { connectorsForWallets, RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
@@ -14,6 +14,7 @@ import {
 } from '@rainbow-me/rainbowkit/wallets';
 import App from './App';
 
+// Network configuration based on environment variable
 const connectors = connectorsForWallets(
   [
     {
@@ -31,13 +32,32 @@ const connectors = connectorsForWallets(
   }
 );
 
-const config = createConfig({
-  connectors,
-  chains: [baseSepolia],
-  transports: {
-    [baseSepolia.id]: http(),
-  },
-});
+const getConfig = () => {
+  const networkEnv = import.meta.env.VITE_NETWORK;
+
+  switch (networkEnv) {
+    case 'base':
+      return createConfig({
+        connectors,
+        chains: [base],
+        transports: {
+          [base.id]: http(),
+        },
+      });
+    case 'base-sepolia':
+      return createConfig({
+        connectors,
+        chains: [baseSepolia],
+        transports: {
+          [baseSepolia.id]: http(),
+        },
+      });
+    default:
+      throw new Error(`Invalid NETWORK environment variable: ${networkEnv}. Must be 'base' or 'base-sepolia'`);
+  }
+};
+
+const config = getConfig();
 
 const queryClient = new QueryClient();
 

@@ -1,9 +1,26 @@
 import { useState } from 'react';
 import { useAccount, useConnect, useConfig, useDisconnect } from 'wagmi';
 import { getWalletClient, switchChain } from '@wagmi/core';
-import { baseSepolia } from 'wagmi/chains';
+import { base, baseSepolia } from 'wagmi/chains';
 import { tryStartSession, startSessionWithPayment } from '../services/api';
 import { extractPaymentRequired, createPaymentHeader } from '../services/x402';
+
+// Network configuration based on environment variable
+const getNetwork = () => {
+  const networkEnv = import.meta.env.VITE_NETWORK;
+
+  switch (networkEnv) {
+    case 'base':
+      return base;
+    case 'base-sepolia':
+      return baseSepolia;
+    default:
+      throw new Error(`Invalid NETWORK environment variable: ${networkEnv}. Must be 'base' or 'base-sepolia'`);
+  }
+};
+
+const network = getNetwork();
+const networkChainId = network.id;
 
 type CellValue = 'X' | 'O' | null;
 
@@ -86,9 +103,9 @@ export function useGameStart(): UseGameStartReturn {
     setSigningWarning(null);
 
     try {
-      // Switch to baseSepolia if needed and get wallet client
-      await switchChain(config, { chainId: baseSepolia.id });
-      const walletClient = await getWalletClient(config, { chainId: baseSepolia.id });
+      // Switch to the configured network if needed and get wallet client
+      await switchChain(config, { chainId: networkChainId });
+      const walletClient = await getWalletClient(config, { chainId: networkChainId });
 
       if (!walletClient) {
         setError('Failed to get wallet client');

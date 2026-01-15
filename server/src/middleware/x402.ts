@@ -6,20 +6,66 @@ import {
 } from '@x402/core/server';
 import { ExactEvmScheme } from '@x402/evm/exact/server';
 import type { PaymentRequirements } from '@x402/core/types';
+import { createFacilitatorConfig } from '@coinbase/x402';
 import { getSession } from '../services/sessionStore.js';
 
 // x402 configuration (from environment variables)
-const FACILITATOR_URL = process.env.FACILITATOR_URL;
 const PAYMENT_ADDRESS = process.env.PAYMENT_ADDRESS as `0x${string}`;
+const NETWORK_ENV = process.env.NETWORK;
+const FACILITATOR_URL = process.env.FACILITATOR_URL
+
+if (!PAYMENT_ADDRESS) {
+  throw new Error('PAYMENT_ADDRESS environment variable is required');
+}
+
+if (!NETWORK_ENV) {
+  throw new Error('NETWORK environment variable is required');
+}
 
 if (!FACILITATOR_URL) {
   throw new Error('FACILITATOR_URL environment variable is required');
 }
-if (!PAYMENT_ADDRESS) {
-  throw new Error('PAYMENT_ADDRESS environment variable is required');
-}
+
 const PRICE_USD = '$0.01';
-const NETWORK = 'eip155:84532'; // Base Sepolia
+
+// Map network name to CAIP-2 chain ID format
+const NETWORK_MAP = {
+  'base': 'eip155:8453' as const,           // Base mainnet
+  'base-sepolia': 'eip155:84532' as const,  // Base Sepolia testnet
+};
+
+const NETWORK = NETWORK_MAP[NETWORK_ENV as keyof typeof NETWORK_MAP];
+if (!NETWORK) {
+  throw new Error(`Invalid NETWORK environment variable: ${NETWORK_ENV}. Must be 'base' or 'base-sepolia'`);
+}
+
+// Configure facilitator based on network
+const getFacilitatorConfig = () => {
+  if (NETWORK_ENV === 'base') {
+
+    if (FACILITATOR_URL === 'https://api.cdp.coinbase.com/platform/v2/x402') {
+      // Mainnet: Use CDP facilitator with JWT authentication
+      const cdpApiKeyId = process.env.CDP_API_KEY_ID;
+      const cdpApiKeySecret = process.env.CDP_API_KEY_SECRET;
+
+      if (!cdpApiKeyId || !cdpApiKeySecret) {
+        throw new Error(
+          'CDP_API_KEY_ID and CDP_API_KEY_SECRET are required for mainnet (base). ' +
+          'Get your API keys from https://portal.cdp.coinbase.com/'
+        );
+      }
+      return createFacilitatorConfig(cdpApiKeyId, cdpApiKeySecret);
+    } else {
+      return { url: FACILITATOR_URL };
+    }
+  } else if (NETWORK_ENV === 'base-sepolia') {
+    return { url: FACILITATOR_URL };
+  } else {
+    throw new Error(`Invalid NETWORK: ${NETWORK_ENV}. Must be 'base' or 'base-sepolia'`);
+  }
+};
+
+const facilitatorConfig = getFacilitatorConfig();
 
 // Extend Request to include wallet address
 declare global {
@@ -46,7 +92,7 @@ const routeConfig: RoutePaymentConfig = {
 };
 
 // Initialize the x402 resource server
-const facilitatorClient = new HTTPFacilitatorClient({ url: FACILITATOR_URL });
+const facilitatorClient = new HTTPFacilitatorClient(facilitatorConfig);
 const resourceServer = new x402ResourceServer(facilitatorClient).register(
   NETWORK,
   new ExactEvmScheme()
@@ -59,11 +105,17 @@ let cachedRequirements: PaymentRequirements | null = null;
 export async function initX402(): Promise<void> {
   console.log('\n🔧 Initializing x402 Resource Server');
   console.log(`   Payment address: ${PAYMENT_ADDRESS}`);
-  console.log(`   Facilitator: ${FACILITATOR_URL}`);
-  console.log(`   Network: ${NETWORK}`);
-  console.log(`   Price: ${PRICE_USD}\n`);
+  console.log(`   Facilitator: ${facilitatorConfig.url}`);
+  console.log(`   Network: ${NETWORK} (${NETWORK_ENV})`);
+  console.log(`   Price: ${PRICE_USD}`);
+  console.log(`   Scheme: exact\n`);
 
-  await resourceServer.initialize();
+  try {
+    await resourceServer.initialize();
+  } catch (error) {
+    console.error('❌ Failed to initialize resource server:', error);
+    throw error;
+  }
 
   // Pre-build payment requirements
   const requirements = await resourceServer.buildPaymentRequirements(routeConfig);
