@@ -90,4 +90,4 @@ The web's third business model just became possible. The question now is who wil
 
 ---
 
-*x402 is an open-source protocol. Learn more at x402.org. The ecosystem is forming now.*
+*x402 is an open-source protocol. Learn more at x402.org.

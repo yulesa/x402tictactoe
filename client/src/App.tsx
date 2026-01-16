@@ -2,6 +2,9 @@ import { useState, useEffect } from 'react';
 import { LandingPage } from './components/LandingPage';
 import { GameBoard } from './components/GameBoard';
 import { WalletConnect } from './components/WalletConnect';
+import { WhyWeBuiltThis } from './components/WhyWeBuiltThis';
+import { HowToPlay } from './components/HowToPlay';
+import { NeedUsdc } from './components/NeedUsdc';
 import { useSession } from './hooks/useSession';
 import { useGameStart, GameSessionData } from './hooks/useGameStart';
 import { makeMove, getSession } from './services/api';
@@ -21,6 +24,9 @@ function App() {
   const [gameState, setGameState] = useState<GameState | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [showWhyModal, setShowWhyModal] = useState(false);
+  const [showHowToPlayModal, setShowHowToPlayModal] = useState(false);
+  const [showNeedUsdcModal, setShowNeedUsdcModal] = useState(false);
 
   // Check for existing session on mount
   useEffect(() => {
@@ -101,13 +107,46 @@ function App() {
   return (
     <div className="app">
       <header>
-        <h1>Tic-Tac-Toe x402</h1>
-        <WalletConnect />
+        <h1>x402 Tic-Tac-Toe</h1>
+        <div className="header-actions">
+          <a
+            href="https://github.com/yulesa/x402demo"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="header-link"
+          >
+            GitHub
+          </a>
+          <button
+            className="header-link"
+            onClick={() => setShowWhyModal(true)}
+          >
+            Why We Built This
+          </button>
+          <button
+            className="header-link"
+            onClick={() => setShowHowToPlayModal(true)}
+          >
+            How to Play
+          </button>
+          <button
+            className="header-link"
+            onClick={() => setShowNeedUsdcModal(true)}
+          >
+            Need USDC?
+          </button>
+          <WalletConnect />
+        </div>
       </header>
 
       <main>
         {!gameState ? (
-          <LandingPage onGameStart={handleGameStart} />
+          <LandingPage
+            onGameStart={handleGameStart}
+            onShowWhyWeBuiltThis={() => setShowWhyModal(true)}
+            onShowHowToPlay={() => setShowHowToPlayModal(true)}
+            onShowNeedUsdc={() => setShowNeedUsdcModal(true)}
+          />
         ) : (
           <div className="game-container">
             <div className={`status ${gameState.status}`}>
@@ -144,6 +183,19 @@ function App() {
       <footer>
         <p>Powered by x402 Protocol | Base Sepolia</p>
       </footer>
+
+      <WhyWeBuiltThis
+        isOpen={showWhyModal}
+        onClose={() => setShowWhyModal(false)}
+      />
+      <HowToPlay
+        isOpen={showHowToPlayModal}
+        onClose={() => setShowHowToPlayModal(false)}
+      />
+      <NeedUsdc
+        isOpen={showNeedUsdcModal}
+        onClose={() => setShowNeedUsdcModal(false)}
+      />
     </div>
   );
 }

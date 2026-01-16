@@ -12,29 +12,6 @@ The demo supports two networks:
 - **Base Sepolia** (testnet) — Uses free test USDC. Perfect for trying the demo without spending real money.
 - **Base Mainnet** — Uses real USDC. Each game costs actual money (one cent).
 
-## Getting USDC for the Demo
-
-### Option A: Testnet (Free)
-
-For Base Sepolia testnet, you can get free test USDC:
-
-1. Go to the CDP Faucet at [faucet.cdp.coinbase.com](https://faucet.cdp.coinbase.com)
-2. Connect your wallet or paste your wallet address
-3. Select "Base Sepolia" network
-4. Request USDC tokens
-
-The faucet will send test USDC to your wallet. These tokens have no real value but work exactly like the real thing for testing purposes.
-
-### Option B: Mainnet (Real Money)
-
-For Base mainnet, you need real USDC. There are many ways of buying it. We suggest Peanut because they accept PIX, but bridging to browser wallet will be necessary. In the future, we hope Peanut to allow direct wallet connect to applications.
-
-1. **Sign up to Peanut.me** — Use your phone and head to [peanut.me](https://peanut.me). You can use the invite YULEINVITESYOU547.
-2. **Add funds** — Click "Add" to add funds, if this is your first time, you need to pass through verification (Know your Client is required in this step). You can use PIX as payment method. Make sure to add at least 1 USD value.
-3. **Bridge funds to your wallet** — Click "Withdraw" to allow sending the funds to another address. Select Crypto as method. Select BASE network and USDC token. Paste your wallet in the wallet address field. Review and confirm.
-
-*This was terrible, right? Bridging makes everything more complex, because it exposes to the user blockchain details. No browser wallet currently has a good on-ramp (purchasing crypto), they don't accept PIX, require user to pre-select especify which token and which network. Peanut has a good UX, however don't allow app connection to sign transactions. We are working on that!*
-
 ## Playing the Game
 
 Once your wallet is funded:

@@ -49,5 +49,3 @@ The first opportunities will be in niches where users are already comfortable wi
 HTTP 402 waited 25 years. The wait is over.
 
 ---
-
-*x402 is an open-source protocol under Apache-2.0. The ecosystem is forming now.*

@@ -50,7 +50,8 @@ footer {
 /* Landing Page */
 .landing-page {
   text-align: center;
-  max-width: 400px;
+  width: 100%;
+  max-width: 600px;
 }
 
 .landing-page h1 {
@@ -214,4 +215,230 @@ footer {
 .new-game-btn:hover {
   transform: translateY(-2px);
   box-shadow: 0 10px 20px rgba(99, 102, 241, 0.3);
+}
+
+/* Header Actions */
+.header-actions {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+/* Match RainbowKit ConnectButton style */
+.header-link {
+  background: #3f4354;
+  border: none;
+  color: #fff;
+  font-family: SFRounded, ui-rounded, SF Pro Rounded, -apple-system, BlinkMacSystemFont, Segoe UI, Roboto, Helvetica, Arial, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 700;
+  cursor: pointer;
+  padding: 0.625rem 0.875rem;
+  border-radius: 10px;
+  transition: transform 0.15s, background 0.15s;
+  text-decoration: none;
+  display: inline-flex;
+  align-items: center;
+}
+
+.header-link:hover {
+  background: #24262B;
+  transform: scale(1.02);
+}
+
+/* Why We Built This Button - uses red theme color */
+.why-btn {
+  background: linear-gradient(135deg, #f87171 0%, #dc2626 100%);
+  border: none;
+  color: #fff;
+  padding: 0.75rem 1.5rem;
+  font-size: 1rem;
+  font-weight: 600;
+  border-radius: 12px;
+  cursor: pointer;
+  transition: transform 0.2s, box-shadow 0.2s;
+  margin-bottom: 1.5rem;
+}
+
+.why-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 10px 20px rgba(248, 113, 113, 0.3);
+}
+
+/* Quick Guide on Landing Page */
+.quick-guide {
+  margin-top: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 12px;
+  text-align: left;
+}
+
+.quick-guide h3 {
+  margin-bottom: 1rem;
+  font-size: 1rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.quick-guide ol {
+  margin-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.quick-guide li {
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 0.875rem;
+}
+
+.quick-guide .need-usdc {
+  font-size: 0.8rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin-bottom: 0.75rem;
+}
+
+.quick-guide .need-usdc a {
+  color: #6366f1;
+}
+
+.how-to-play-link {
+  background: none;
+  border: none;
+  color: #6366f1;
+  font-size: 0.875rem;
+  cursor: pointer;
+  padding: 0;
+  text-decoration: underline;
+}
+
+.how-to-play-link:hover {
+  color: #8b5cf6;
+}
+
+/* Modal Styles */
+.modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  z-index: 1000;
+  padding: 1rem;
+}
+
+.modal-content {
+  background: linear-gradient(135deg, #1a1a2e 0%, #16213e 100%);
+  border-radius: 16px;
+  max-width: 700px;
+  max-height: 85vh;
+  width: 100%;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 1.25rem 1.5rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.modal-header h2 {
+  font-size: 1.25rem;
+  font-weight: 600;
+}
+
+.modal-close {
+  background: none;
+  border: none;
+  color: rgba(255, 255, 255, 0.6);
+  font-size: 1.75rem;
+  cursor: pointer;
+  padding: 0;
+  line-height: 1;
+}
+
+.modal-close:hover {
+  color: #fff;
+}
+
+.modal-body {
+  padding: 1.5rem;
+  overflow-y: auto;
+  max-height: calc(85vh - 70px);
+}
+
+/* Markdown Content Styles */
+.markdown-content {
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.6;
+}
+
+.markdown-content h1 {
+  font-size: 1.5rem;
+  margin-bottom: 1rem;
+  color: #fff;
+}
+
+.markdown-content h2 {
+  font-size: 1.25rem;
+  margin-top: 1.5rem;
+  margin-bottom: 0.75rem;
+  color: #fff;
+}
+
+.markdown-content h3 {
+  font-size: 1.1rem;
+  margin-top: 1.25rem;
+  margin-bottom: 0.5rem;
+  color: #fff;
+}
+
+.markdown-content h4,
+.markdown-content h5 {
+  font-size: 1rem;
+  margin-top: 1rem;
+  margin-bottom: 0.5rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.markdown-content p {
+  margin-bottom: 1rem;
+}
+
+.markdown-content ul,
+.markdown-content ol {
+  margin-left: 1.25rem;
+  margin-bottom: 1rem;
+}
+
+.markdown-content li {
+  margin-bottom: 0.5rem;
+}
+
+.markdown-content a {
+  color: #6366f1;
+}
+
+.markdown-content a:hover {
+  color: #8b5cf6;
+}
+
+.markdown-content strong {
+  color: #fff;
+}
+
+.markdown-content hr {
+  border: none;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 1.5rem 0;
+}
+
+.markdown-content em {
+  color: rgba(255, 255, 255, 0.6);
 }
