@@ -27,7 +27,7 @@ const connectors = connectorsForWallets(
     },
   ],
   {
-    appName: 'Tic-Tac-Toe x402',
+    appName: 'x402 Tic-Tac-Toe',
     projectId: import.meta.env.VITE_REOWN_PROJECT_ID,
   }
 );

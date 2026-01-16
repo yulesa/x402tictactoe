@@ -1,4 +1,4 @@
-# Tic-Tac-Toe x402 - Architecture Document
+# x402 Tic-Tac-Toe - Architecture Document
 
 ## Project Overview
 

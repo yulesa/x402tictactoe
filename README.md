@@ -1,4 +1,4 @@
-# Tic-Tac-Toe x402
+# x402 Tic-Tac-Toe
 
 A pay-per-play Tic-Tac-Toe game demonstrating x402 payment protocol integration. Players pay 0.01 USDC per game. Supports both Base mainnet and Base Sepolia testnet (default).
 
