@@ -10,6 +10,22 @@ import { useGameStart, GameSessionData } from './hooks/useGameStart';
 import { makeMove, getSession } from './services/api';
 import './App.css';
 
+// Get network display name from environment
+const getNetworkName = () => {
+  const networkEnv = import.meta.env.VITE_NETWORK;
+  switch (networkEnv) {
+    case 'base':
+      return 'Base Mainnet';
+    case 'base-sepolia':
+      return 'Base Sepolia';
+    default:
+      return networkEnv || 'Unknown Network';
+  }
+};
+
+const networkName = getNetworkName();
+const isTestnet = import.meta.env.VITE_NETWORK === 'base-sepolia';
+
 type CellValue = 'X' | 'O' | null;
 
 interface GameState {
@@ -139,6 +155,10 @@ function App() {
         </div>
       </header>
 
+      <div className={`network-banner ${isTestnet ? 'testnet' : 'mainnet'}`}>
+        Running on {networkName}
+      </div>
+
       <main>
         {!gameState ? (
           <LandingPage
@@ -181,7 +201,7 @@ function App() {
       </main>
 
       <footer>
-        <p>Powered by x402 Protocol | Base Sepolia</p>
+        <p>Powered by x402 Protocol | {networkName}</p>
       </footer>
 
       <WhyWeBuiltThis
