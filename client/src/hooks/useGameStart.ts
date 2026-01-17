@@ -22,6 +22,22 @@ const getNetwork = () => {
 const network = getNetwork();
 const networkChainId = network.id;
 
+// Transform error messages to be more user-friendly
+export function formatErrorMessage(error: unknown): string {
+  const message = error instanceof Error ? error.message : String(error);
+  const lowerMessage = message.toLowerCase();
+
+  if (lowerMessage.includes('insufficient funds') || lowerMessage.includes('insufficient_funds')) {
+    return 'Your wallet has insufficient funds for the action. Make sure to have USDC. Check the "Need USDC?" info.';
+  }
+
+  if (lowerMessage.includes('user rejected') || lowerMessage.includes('user denied')) {
+    return 'User rejected action in the wallet.';
+  }
+
+  return message;
+}
+
 type CellValue = 'X' | 'O' | null;
 
 export interface GameSessionData {
@@ -123,7 +139,7 @@ export function useGameStart(): UseGameStartReturn {
       };
     } catch (err) {
       console.error('[Wallet] Error:', err);
-      setError(err instanceof Error ? err.message : 'Failed to start game');
+      setError(formatErrorMessage(err));
       return null;
     } finally {
       setIsStarting(false);

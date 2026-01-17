@@ -6,7 +6,7 @@ import { WhyWeBuiltThis } from './components/WhyWeBuiltThis';
 import { HowToPlay } from './components/HowToPlay';
 import { NeedUsdc } from './components/NeedUsdc';
 import { useSession } from './hooks/useSession';
-import { useGameStart, GameSessionData } from './hooks/useGameStart';
+import { useGameStart, GameSessionData, formatErrorMessage } from './hooks/useGameStart';
 import { makeMove, getSession } from './services/api';
 import './App.css';
 
@@ -84,7 +84,7 @@ function App() {
         status: result.status,
       });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to make move');
+      setError(formatErrorMessage(err));
     } finally {
       setIsLoading(false);
     }
