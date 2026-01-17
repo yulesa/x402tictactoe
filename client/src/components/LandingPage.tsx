@@ -15,7 +15,7 @@ export function LandingPage({
   onShowHowToPlay,
   onShowNeedUsdc,
 }: LandingPageProps) {
-  const { address, isConnected } = useAccount();
+  const { isConnected } = useAccount();
   const { openConnectModal } = useConnectModal();
   const { startGame, isStarting, error, signingWarning } = useGameStart();
 
@@ -57,12 +57,6 @@ export function LandingPage({
             ? 'Start Game (0.01 USD)'
             : 'Connect Wallet & Play'}
       </button>
-
-      {isConnected && (
-        <p className="wallet-status">
-          Connected: {address?.slice(0, 6)}...{address?.slice(-4)}
-        </p>
-      )}
 
       {signingWarning && <p className="warning">{signingWarning}</p>}
 
