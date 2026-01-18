@@ -1,8 +1,8 @@
 services:
   - type: web
-    name: x402-tictactoe-api
+    name: x402-tictactoe
     runtime: node
-    region: oregon
+    region: virginia
     plan: free
     buildCommand: npm install && npm run build
     startCommand: npm start
