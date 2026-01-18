@@ -73,6 +73,7 @@ export function LandingPage({
             </button>
             .
             </li>
+          <li>You’re in control of your wallet. We don’t have access to your funds or recovery keys. This keeps your assets fully yours, but also means transactions are final and can’t be undone (just like PIX). </li>
           <li>Start the game. You will be prompted to sign the 0.01 USDC payment.</li>
         </ol>
         <button className="how-to-play-link" onClick={onShowHowToPlay}>

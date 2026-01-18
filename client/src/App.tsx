@@ -17,7 +17,7 @@ const getNetworkName = () => {
     case 'base':
       return 'Base Mainnet';
     case 'base-sepolia':
-      return 'Base Sepolia';
+      return 'Base Sepolia (Testnet)';
     default:
       return networkEnv || 'Unknown Network';
   }
