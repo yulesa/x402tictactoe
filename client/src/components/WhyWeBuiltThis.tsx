@@ -12,7 +12,7 @@ export function WhyWeBuiltThis({ isOpen, onClose }: WhyWeBuiltThisProps) {
 
   useEffect(() => {
     if (isOpen && !content) {
-      fetch('/why-we-built-this.md')
+      fetch(`${import.meta.env.BASE_URL}why-we-built-this.md`)
         .then((res) => res.text())
         .then(setContent)
         .catch(() => setContent('Failed to load content.'));

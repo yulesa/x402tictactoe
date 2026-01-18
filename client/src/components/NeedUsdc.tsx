@@ -12,7 +12,7 @@ export function NeedUsdc({ isOpen, onClose }: NeedUsdcProps) {
 
   useEffect(() => {
     if (isOpen && !content) {
-      fetch('/need-usdc.md')
+      fetch(`${import.meta.env.BASE_URL}need-usdc.md`)
         .then((res) => res.text())
         .then(setContent)
         .catch(() => setContent('Failed to load content.'));

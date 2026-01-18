@@ -15,6 +15,7 @@ app.use(cors({
     'https://yulesa.github.io',
   ],
   credentials: true,
+  exposedHeaders: ['X-Payment-Required', 'Payment-Required'],
 }));
 app.use(express.json());
 

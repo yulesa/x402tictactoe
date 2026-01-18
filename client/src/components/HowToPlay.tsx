@@ -12,7 +12,7 @@ export function HowToPlay({ isOpen, onClose }: HowToPlayProps) {
 
   useEffect(() => {
     if (isOpen && !content) {
-      fetch('/how-to-play.md')
+      fetch(`${import.meta.env.BASE_URL}how-to-play.md`)
         .then((res) => res.text())
         .then(setContent)
         .catch(() => setContent('Failed to load content.'));
