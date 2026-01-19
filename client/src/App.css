@@ -367,6 +367,148 @@ footer {
   border-color: var(--border-medium);
 }
 
+/* Wallet Buttons */
+.wallet-button {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid var(--border-subtle);
+  color: var(--text-primary);
+  font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+  font-size: 0.875rem;
+  font-weight: 600;
+  cursor: pointer;
+  padding: 0.625rem 1rem;
+  border-radius: var(--radius-sm);
+  transition: all 0.15s ease;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.wallet-button:hover {
+  background: rgba(255, 255, 255, 0.12);
+  border-color: var(--border-medium);
+}
+
+.wallet-button-connect {
+  background: var(--accent-primary);
+  border: none;
+  color: #000;
+  font-weight: 700;
+}
+
+.wallet-button-connect:hover {
+  background: var(--accent-secondary);
+}
+
+.wallet-button-wrong-network {
+  background: #ef4444;
+  border: none;
+  color: white;
+}
+
+.wallet-button-wrong-network:hover {
+  background: #dc2626;
+}
+
+.wallet-button-chain {
+  gap: 0.375rem;
+}
+
+.wallet-button-account {
+  background: var(--accent-primary);
+  border: none;
+  color: #000;
+  font-weight: 700;
+}
+
+.wallet-button-account:hover {
+  background: var(--accent-secondary);
+}
+
+.chain-icon {
+  width: 20px;
+  height: 20px;
+  border-radius: 50%;
+}
+
+.usdc-balance {
+  padding-right: 0.5rem;
+  border-right: 1px solid rgba(0, 0, 0, 0.2);
+  margin-right: 0.25rem;
+}
+
+.wallet-button-qr {
+  padding: 0.625rem;
+}
+
+/* QR Code Modal */
+.qr-modal-overlay {
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.8);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  backdrop-filter: blur(4px);
+}
+
+.qr-modal {
+  background: var(--card-bg);
+  border: 1px solid var(--border-subtle);
+  border-radius: var(--radius-md);
+  padding: 2rem;
+  text-align: center;
+  position: relative;
+  max-width: 400px;
+  width: 90%;
+}
+
+.qr-modal h3 {
+  margin: 0 0 1.5rem 0;
+  color: var(--text-primary);
+  font-size: 1.25rem;
+}
+
+.qr-modal-close {
+  position: absolute;
+  top: 0.75rem;
+  right: 0.75rem;
+  background: none;
+  border: none;
+  color: var(--text-secondary);
+  font-size: 1.5rem;
+  cursor: pointer;
+  padding: 0.25rem 0.5rem;
+  line-height: 1;
+}
+
+.qr-modal-close:hover {
+  color: var(--text-primary);
+}
+
+.qr-code-container {
+  background: white;
+  padding: 1rem;
+  border-radius: var(--radius-sm);
+  display: inline-block;
+  margin-bottom: 1rem;
+}
+
+.qr-address {
+  font-family: monospace;
+  font-size: 0.75rem;
+  color: var(--text-secondary);
+  word-break: break-all;
+  margin: 0 0 1rem 0;
+  padding: 0.5rem;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: var(--radius-sm);
+}
+
 /* Why Button - Uses accent green */
 .why-btn {
   background: var(--accent-primary);
