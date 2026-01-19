@@ -1,5 +1,33 @@
 const API_BASE = import.meta.env.VITE_API_URL || '/api';
 
+// Wake up the server (useful for Render cold starts)
+// Retries with exponential backoff until the server responds
+// Returns true if server is ready, false if all retries failed
+export async function wakeServer(maxRetries = 5): Promise<boolean> {
+  const baseUrl = API_BASE.replace(/\/api$/, '') || '/';
+
+  for (let attempt = 0; attempt < maxRetries; attempt++) {
+    try {
+      const response = await fetch(baseUrl, { method: 'GET' });
+      if (response.ok) {
+        const data = await response.json();
+        console.log('Server is awake:', data);
+        return true;
+      }
+    } catch {
+      // Server not ready yet
+    }
+
+    // Exponential backoff: 1s, 2s, 4s, 8s, 16s
+    const delay = Math.pow(2, attempt) * 1000;
+    console.log(`Server not ready, retrying in ${delay / 1000}s...`);
+    await new Promise(resolve => setTimeout(resolve, delay));
+  }
+
+  console.error('Server is not available after retries');
+  return false;
+}
+
 export interface SessionResponse {
   walletAddress: string;
   board: (string | null)[];
