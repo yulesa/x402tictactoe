@@ -1,9 +1,18 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
 import { ConnectButton, useActiveAccount, useActiveWalletChain, useWalletBalance } from 'thirdweb/react';
+import { createWallet } from 'thirdweb/wallets';
 import { base, baseSepolia } from 'thirdweb/chains';
 import { QRCodeSVG } from 'qrcode.react';
 import { thirdwebClient } from '../thirdwebClient';
+
+// Configure recommended wallets
+const wallets = [
+  createWallet('me.rainbow'),
+  createWallet('io.rabby'),
+  createWallet('io.metamask'),
+  createWallet('com.coinbase.wallet'),
+];
 
 // USDC contract addresses
 const USDC_ADDRESSES: Record<number, string> = {
@@ -126,6 +135,7 @@ export function WalletConnect() {
         {/* Thirdweb ConnectButton */}
         <ConnectButton
           client={thirdwebClient}
+          wallets={wallets}
           chains={[base, baseSepolia]}
           theme="dark"
           connectButton={{

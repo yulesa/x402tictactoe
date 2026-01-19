@@ -1,6 +1,16 @@
 import { useActiveAccount, useConnectModal } from 'thirdweb/react';
+import { createWallet } from 'thirdweb/wallets';
+import { base, baseSepolia } from 'thirdweb/chains';
 import { useGameStart, GameSessionData } from '../hooks/useGameStart';
 import { thirdwebClient } from '../thirdwebClient';
+
+// Same wallet configuration as WalletConnect component
+const wallets = [
+  createWallet('me.rainbow'),
+  createWallet('io.rabby'),
+  createWallet('io.metamask'),
+  createWallet('com.coinbase.wallet'),
+];
 
 interface LandingPageProps {
   onGameStart: (sessionData: GameSessionData) => void;
@@ -21,9 +31,13 @@ export function LandingPage({
   const { startGame, isStarting, error, signingWarning } = useGameStart();
 
   const handleStartGame = async () => {
-    // If not connected, open the thirdweb connect modal
+    // If not connected, open the thirdweb connect modal with same wallet options
     if (!isConnected) {
-      connect({ client: thirdwebClient });
+      connect({
+        client: thirdwebClient,
+        wallets,
+        chains: [base, baseSepolia],
+      });
       return;
     }
 
