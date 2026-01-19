@@ -19,6 +19,19 @@ app.use(cors({
 }));
 app.use(express.json());
 
+// Root route - server status
+app.get('/', (_req, res) => {
+  res.json({
+    status: 'awake',
+    message: 'Tic-Tac-Toe x402 Server',
+    config: {
+      network: process.env.NETWORK || 'not set',
+      facilitatorUrl: process.env.FACILITATOR_URL || 'not set',
+      paymentAddress: process.env.PAYMENT_ADDRESS || 'not set',
+    },
+  });
+});
+
 // Routes
 app.use('/api/session', sessionRouter);
 app.use('/api/game', gameRouter);
