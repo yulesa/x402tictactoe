@@ -4,11 +4,15 @@ const API_BASE = import.meta.env.VITE_API_URL || '/api';
 // Retries with exponential backoff until the server responds
 // Returns true if server is ready, false if all retries failed
 export async function wakeServer(maxRetries = 5): Promise<boolean> {
-  const baseUrl = API_BASE.replace(/\/api$/, '') || '/';
+  // In production (VITE_API_URL set): ping the root endpoint
+  // In local dev (no VITE_API_URL): use the API base which goes through Vite proxy
+  const wakeUrl = import.meta.env.VITE_API_URL
+    ? API_BASE.replace(/\/api$/, '') || '/'
+    : '/api';
 
   for (let attempt = 0; attempt < maxRetries; attempt++) {
     try {
-      const response = await fetch(baseUrl, { method: 'GET' });
+      const response = await fetch(wakeUrl, { method: 'GET' });
       if (response.ok) {
         const data = await response.json();
         console.log('Server is awake:', data);

@@ -41,32 +41,14 @@ const connectors = connectorsForWallets(
   }
 );
 
-const getConfig = () => {
-  const networkEnv = import.meta.env.VITE_NETWORK;
-
-  switch (networkEnv) {
-    case 'base':
-      return createConfig({
-        connectors,
-        chains: [base],
-        transports: {
-          [base.id]: http(),
-        },
-      });
-    case 'base-sepolia':
-      return createConfig({
-        connectors,
-        chains: [baseSepolia],
-        transports: {
-          [baseSepolia.id]: http(),
-        },
-      });
-    default:
-      throw new Error(`Invalid NETWORK environment variable: ${networkEnv}. Must be 'base' or 'base-sepolia'`);
-  }
-};
-
-const config = getConfig();
+const config = createConfig({
+  connectors,
+  chains: [base, baseSepolia],
+  transports: {
+    [base.id]: http(),
+    [baseSepolia.id]: http(),
+  },
+});
 
 const queryClient = new QueryClient();
 
@@ -92,6 +74,7 @@ wakeServer().then((serverReady) => {
       <WagmiProvider config={config}>
         <QueryClientProvider client={queryClient}>
           <RainbowKitProvider
+            initialChain={base}
             theme={darkTheme({
               accentColor: '#22c55e',
               accentColorForeground: 'black',

@@ -19,8 +19,8 @@ app.use(cors({
 }));
 app.use(express.json());
 
-// Root route - server status
-app.get('/', (_req, res) => {
+// Server status handler
+const statusHandler = (_req: express.Request, res: express.Response) => {
   res.json({
     status: 'awake',
     message: 'Tic-Tac-Toe x402 Server',
@@ -30,7 +30,11 @@ app.get('/', (_req, res) => {
       paymentAddress: process.env.PAYMENT_ADDRESS || 'not set',
     },
   });
-});
+};
+
+// Root and /api routes - server status
+app.get('/', statusHandler);
+app.get('/api', statusHandler);
 
 // Routes
 app.use('/api/session', sessionRouter);
