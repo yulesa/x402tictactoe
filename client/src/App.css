@@ -437,6 +437,16 @@ footer {
   margin-right: 0.25rem;
 }
 
+.usdc-balance-standalone {
+  background: rgba(34, 197, 94, 0.15);
+  color: #22c55e;
+  padding: 0.5rem 0.75rem;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 1px solid rgba(34, 197, 94, 0.3);
+}
+
 .wallet-button-qr {
   padding: 0.625rem;
 }

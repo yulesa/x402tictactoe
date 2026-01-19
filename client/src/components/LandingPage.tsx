@@ -1,6 +1,6 @@
-import { useAccount } from 'wagmi';
-import { useConnectModal } from '@rainbow-me/rainbowkit';
+import { useActiveAccount, useConnectModal } from 'thirdweb/react';
 import { useGameStart, GameSessionData } from '../hooks/useGameStart';
+import { thirdwebClient } from '../thirdwebClient';
 
 interface LandingPageProps {
   onGameStart: (sessionData: GameSessionData) => void;
@@ -15,14 +15,15 @@ export function LandingPage({
   onShowHowToPlay,
   onShowNeedUsdc,
 }: LandingPageProps) {
-  const { isConnected } = useAccount();
-  const { openConnectModal } = useConnectModal();
+  const account = useActiveAccount();
+  const isConnected = !!account;
+  const { connect } = useConnectModal();
   const { startGame, isStarting, error, signingWarning } = useGameStart();
 
   const handleStartGame = async () => {
-    // If not connected, open the RainbowKit modal
-    if (!isConnected && openConnectModal) {
-      openConnectModal();
+    // If not connected, open the thirdweb connect modal
+    if (!isConnected) {
+      connect({ client: thirdwebClient });
       return;
     }
 
@@ -73,7 +74,7 @@ export function LandingPage({
             </button>
             .
             </li>
-          <li>You’re in control of your wallet. We don’t have access to your funds or recovery keys. This keeps your assets fully yours, but also means transactions are final and can’t be undone (just like PIX). </li>
+          <li>You're in control of your wallet. We don't have access to your funds or recovery keys. This keeps your assets fully yours, but also means transactions are final and can't be undone (just like PIX). </li>
           <li>Start the game. You will be prompted to sign the 0.01 USDC payment.</li>
         </ol>
         <button className="how-to-play-link" onClick={onShowHowToPlay}>
