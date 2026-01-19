@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ConnectButton, useActiveAccount, useActiveWalletChain, useWalletBalance } from 'thirdweb/react';
+import { ConnectButton, useActiveAccount } from 'thirdweb/react';
 import { createWallet } from 'thirdweb/wallets';
 import { base, baseSepolia } from 'thirdweb/chains';
 import { QRCodeSVG } from 'qrcode.react';
@@ -19,6 +19,9 @@ const USDC_ADDRESSES: Record<number, string> = {
   [base.id]: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
   [baseSepolia.id]: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
 };
+
+// Use test mode for fiat onramp when on testnet
+const isTestnet = import.meta.env.VITE_NETWORK === 'base-sepolia';
 
 // QR Code icon component
 function QRIcon() {
@@ -103,35 +106,11 @@ function QRModal({ address, onClose }: QRModalProps) {
 
 export function WalletConnect() {
   const account = useActiveAccount();
-  const chain = useActiveWalletChain();
   const [showQR, setShowQR] = useState(false);
-
-  const chainId = chain?.id ?? baseSepolia.id;
-  const usdcAddress = USDC_ADDRESSES[chainId];
-
-  const { data: usdcBalance } = useWalletBalance({
-    client: thirdwebClient,
-    chain: chain ?? baseSepolia,
-    address: account?.address,
-    tokenAddress: usdcAddress,
-  });
-
-  const formatBalance = (balance: typeof usdcBalance) => {
-    if (!balance) return null;
-    const value = parseFloat(balance.displayValue);
-    return `${value.toFixed(2)} ${balance.symbol}`;
-  };
 
   return (
     <>
       <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
-        {/* USDC Balance display when connected */}
-        {account && usdcBalance && (
-          <span className="usdc-balance-standalone">
-            {formatBalance(usdcBalance)}
-          </span>
-        )}
-
         {/* Thirdweb ConnectButton */}
         <ConnectButton
           client={thirdwebClient}
@@ -150,10 +129,22 @@ export function WalletConnect() {
             },
           }}
           detailsButton={{
+            displayBalanceToken: {
+              [baseSepolia.id]: USDC_ADDRESSES[baseSepolia.id],
+              [base.id]: USDC_ADDRESSES[base.id],
+            },
             style: {
               borderRadius: '12px',
               padding: '10px 16px',
               fontSize: '14px',
+            },
+          }}
+          detailsModal={{
+            payOptions: {
+              buyWithFiat: {
+                testMode: isTestnet,
+              },
+              buyWithCrypto: {},
             },
           }}
         />

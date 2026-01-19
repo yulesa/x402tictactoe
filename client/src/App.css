@@ -354,12 +354,14 @@ footer {
   font-size: 0.875rem;
   font-weight: 600;
   cursor: pointer;
-  padding: 0.625rem 1rem;
-  border-radius: var(--radius-sm);
+  padding: 10px 16px;
+  min-height: 50px;
+  border-radius: 12px;
   transition: all 0.15s ease;
   text-decoration: none;
   display: inline-flex;
   align-items: center;
+  box-sizing: border-box;
 }
 
 .header-link:hover {
@@ -448,7 +450,12 @@ footer {
 }
 
 .wallet-button-qr {
-  padding: 0.625rem;
+  padding: 10px 16px;
+  min-height: 50px;
+  border-radius: 12px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 /* QR Code Modal */
