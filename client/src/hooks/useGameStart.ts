@@ -1,9 +1,10 @@
 import { useState } from 'react';
-import { useAccount, useConfig } from 'wagmi';
-import { getWalletClient, switchChain } from '@wagmi/core';
-import { base, baseSepolia } from 'wagmi/chains';
+import { useActiveAccount, useActiveWallet, useSwitchActiveWalletChain } from 'thirdweb/react';
+import { base, baseSepolia } from 'thirdweb/chains';
+import { viemAdapter } from 'thirdweb/adapters/viem';
 import { tryStartSession, startSessionWithPayment } from '../services/api';
 import { extractPaymentRequired, createPaymentHeader } from '../services/x402';
+import { thirdwebClient } from '../thirdwebClient';
 
 // Network configuration based on environment variable
 const getNetwork = () => {
@@ -20,7 +21,6 @@ const getNetwork = () => {
 };
 
 const network = getNetwork();
-const networkChainId = network.id;
 
 // Transform error messages to be more user-friendly
 export function formatErrorMessage(error: unknown): string {
@@ -56,20 +56,21 @@ interface UseGameStartReturn {
 }
 
 export function useGameStart(): UseGameStartReturn {
-  const { address, isConnected } = useAccount();
-  const config = useConfig();
+  const account = useActiveAccount();
+  const wallet = useActiveWallet();
+  const switchChain = useSwitchActiveWalletChain();
   const [isStarting, setIsStarting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [signingWarning, setSigningWarning] = useState<string | null>(null);
 
   const startGame = async (): Promise<GameSessionData | null> => {
     setError(null);
-    console.log('[Wallet] startGame called', { isConnected, address });
+    console.log('[Wallet] startGame called', { account: account?.address });
 
-    let walletAddress = address;
+    const walletAddress = account?.address as `0x${string}` | undefined;
 
     // Check if wallet is connected - caller should handle opening connect modal
-    if (!isConnected || !walletAddress) {
+    if (!account || !wallet || !walletAddress) {
       console.log('[Wallet] Not connected, aborting game start');
       return null;
     }
@@ -78,14 +79,15 @@ export function useGameStart(): UseGameStartReturn {
     setSigningWarning(null);
 
     try {
-      // Switch to the configured network if needed and get wallet client
-      await switchChain(config, { chainId: networkChainId });
-      const walletClient = await getWalletClient(config, { chainId: networkChainId });
+      // Switch to the configured network if needed
+      await switchChain(network);
 
-      if (!walletClient) {
-        setError('Failed to get wallet client');
-        return null;
-      }
+      // Get viem wallet client from thirdweb
+      const walletClient = viemAdapter.walletClient.toViem({
+        client: thirdwebClient,
+        chain: network,
+        account,
+      });
 
       console.log('[Wallet] Starting game', { address: walletAddress });
 

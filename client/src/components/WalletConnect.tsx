@@ -1,15 +1,27 @@
 import { useState, useEffect } from 'react';
 import { createPortal } from 'react-dom';
-import { ConnectButton } from '@rainbow-me/rainbowkit';
-import { useAccount, useBalance, useChainId } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
+import { ConnectButton, useActiveAccount } from 'thirdweb/react';
+import { createWallet } from 'thirdweb/wallets';
+import { base, baseSepolia } from 'thirdweb/chains';
 import { QRCodeSVG } from 'qrcode.react';
+import { thirdwebClient } from '../thirdwebClient';
+
+// Configure recommended wallets
+const wallets = [
+  createWallet('me.rainbow'),
+  createWallet('io.rabby'),
+  createWallet('io.metamask'),
+  createWallet('com.coinbase.wallet'),
+];
 
 // USDC contract addresses
-const USDC_ADDRESSES: Record<number, `0x${string}`> = {
+const USDC_ADDRESSES: Record<number, string> = {
   [base.id]: '0x833589fCD6eDb6E08f4c7C32D4f71b54bdA02913',
   [baseSepolia.id]: '0x036CbD53842c5426634e7929541eC2318f3dCF7e',
 };
+
+// Use test mode for fiat onramp when on testnet
+const isTestnet = import.meta.env.VITE_NETWORK === 'base-sepolia';
 
 // QR Code icon component
 function QRIcon() {
@@ -93,124 +105,65 @@ function QRModal({ address, onClose }: QRModalProps) {
 }
 
 export function WalletConnect() {
-  const { address } = useAccount();
-  const chainId = useChainId();
-  const usdcAddress = USDC_ADDRESSES[chainId];
+  const account = useActiveAccount();
   const [showQR, setShowQR] = useState(false);
-
-  const { data: usdcBalance } = useBalance({
-    address,
-    token: usdcAddress,
-    query: {
-      enabled: !!address && !!usdcAddress,
-    },
-  });
-
-  const formatBalance = (balance: typeof usdcBalance) => {
-    if (!balance) return null;
-    const value = parseFloat(balance.formatted);
-    return `${value.toFixed(2)} ${balance.symbol}`;
-  };
 
   return (
     <>
-      <ConnectButton.Custom>
-        {({
-          account,
-          chain,
-          openAccountModal,
-          openChainModal,
-          openConnectModal,
-          mounted,
-        }) => {
-          const ready = mounted;
-          const connected = ready && account && chain;
+      <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+        {/* Thirdweb ConnectButton */}
+        <ConnectButton
+          client={thirdwebClient}
+          wallets={wallets}
+          chains={[base, baseSepolia]}
+          theme="dark"
+          connectButton={{
+            label: 'Connect Wallet',
+            style: {
+              backgroundColor: '#22c55e',
+              color: 'black',
+              borderRadius: '12px',
+              padding: '10px 20px',
+              fontSize: '14px',
+              fontWeight: '600',
+            },
+          }}
+          detailsButton={{
+            displayBalanceToken: {
+              [baseSepolia.id]: USDC_ADDRESSES[baseSepolia.id],
+              [base.id]: USDC_ADDRESSES[base.id],
+            },
+            style: {
+              borderRadius: '12px',
+              padding: '10px 16px',
+              fontSize: '14px',
+            },
+          }}
+          detailsModal={{
+            payOptions: {
+              buyWithFiat: {
+                testMode: isTestnet,
+              },
+              buyWithCrypto: {},
+            },
+          }}
+        />
 
-          return (
-            <div
-              {...(!ready && {
-                'aria-hidden': true,
-                style: {
-                  opacity: 0,
-                  pointerEvents: 'none',
-                  userSelect: 'none',
-                },
-              })}
-              style={{ display: 'flex', gap: '8px', alignItems: 'center' }}
-            >
-              {(() => {
-                if (!connected) {
-                  return (
-                    <button
-                      onClick={openConnectModal}
-                      type="button"
-                      className="wallet-button wallet-button-connect"
-                    >
-                      Connect Wallet
-                    </button>
-                  );
-                }
+        {/* QR Code button when connected */}
+        {account && (
+          <button
+            onClick={() => setShowQR(true)}
+            type="button"
+            className="wallet-button wallet-button-qr"
+            title="Show QR Code"
+          >
+            <QRIcon />
+          </button>
+        )}
+      </div>
 
-                if (chain.unsupported) {
-                  return (
-                    <button
-                      onClick={openChainModal}
-                      type="button"
-                      className="wallet-button wallet-button-wrong-network"
-                    >
-                      Wrong network
-                    </button>
-                  );
-                }
-
-                return (
-                  <>
-                    <button
-                      onClick={openChainModal}
-                      type="button"
-                      className="wallet-button wallet-button-chain"
-                    >
-                      {chain.hasIcon && chain.iconUrl && (
-                        <img
-                          alt={chain.name ?? 'Chain icon'}
-                          src={chain.iconUrl}
-                          className="chain-icon"
-                        />
-                      )}
-                      {chain.name}
-                    </button>
-
-                    <button
-                      onClick={openAccountModal}
-                      type="button"
-                      className="wallet-button wallet-button-account"
-                    >
-                      {formatBalance(usdcBalance) && (
-                        <span className="usdc-balance">
-                          {formatBalance(usdcBalance)}
-                        </span>
-                      )}
-                      {account.displayName}
-                    </button>
-
-                    <button
-                      onClick={() => setShowQR(true)}
-                      type="button"
-                      className="wallet-button wallet-button-qr"
-                      title="Show QR Code"
-                    >
-                      <QRIcon />
-                    </button>
-                  </>
-                );
-              })()}
-            </div>
-          );
-        }}
-      </ConnectButton.Custom>
-
-      {showQR && address && (
-        <QRModal address={address} onClose={() => setShowQR(false)} />
+      {showQR && account?.address && (
+        <QRModal address={account.address} onClose={() => setShowQR(false)} />
       )}
     </>
   );

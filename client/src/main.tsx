@@ -1,14 +1,6 @@
 import React from 'react';
 import ReactDOM from 'react-dom/client';
-import { WagmiProvider, http, createConfig } from 'wagmi';
-import { base, baseSepolia } from 'wagmi/chains';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import '@rainbow-me/rainbowkit/styles.css';
-import { connectorsForWallets, RainbowKitProvider, darkTheme } from '@rainbow-me/rainbowkit';
-import {
-  rainbowWallet,
-  walletConnectWallet,
-} from '@rainbow-me/rainbowkit/wallets';
+import { ThirdwebProvider } from 'thirdweb/react';
 import App from './App';
 import { wakeServer } from './services/api';
 
@@ -23,34 +15,6 @@ rootElement.innerHTML = `
   </div>
 `;
 
-// Network configuration based on environment variable
-const connectors = connectorsForWallets(
-  [
-    {
-      groupName: 'Recommended',
-      wallets: [rainbowWallet],
-    },
-    {
-      groupName: 'Other',
-      wallets: [walletConnectWallet],
-    },
-  ],
-  {
-    appName: 'x402 Tic-Tac-Toe',
-    projectId: import.meta.env.VITE_REOWN_PROJECT_ID,
-  }
-);
-
-const config = createConfig({
-  connectors,
-  chains: [base, baseSepolia],
-  transports: {
-    [base.id]: http(),
-    [baseSepolia.id]: http(),
-  },
-});
-
-const queryClient = new QueryClient();
 
 // Wake up the server before rendering (handles Render cold starts)
 wakeServer().then((serverReady) => {
@@ -71,20 +35,9 @@ wakeServer().then((serverReady) => {
 
   ReactDOM.createRoot(document.getElementById('root')!).render(
     <React.StrictMode>
-      <WagmiProvider config={config}>
-        <QueryClientProvider client={queryClient}>
-          <RainbowKitProvider
-            initialChain={base}
-            theme={darkTheme({
-              accentColor: '#22c55e',
-              accentColorForeground: 'black',
-              borderRadius: 'large',
-            })}
-          >
-            <App />
-          </RainbowKitProvider>
-        </QueryClientProvider>
-      </WagmiProvider>
+      <ThirdwebProvider>
+        <App />
+      </ThirdwebProvider>
     </React.StrictMode>
   );
 });

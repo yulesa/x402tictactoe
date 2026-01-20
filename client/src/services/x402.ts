@@ -2,7 +2,22 @@ import { x402Client } from '@x402/core/client';
 import { encodePaymentSignatureHeader } from '@x402/core/http';
 import { ExactEvmScheme } from '@x402/evm/exact/client';
 import type { PaymentRequired } from '@x402/core/types';
-import type { WalletClient } from 'viem';
+
+// Type for wallet client that supports signTypedData
+interface SignableWalletClient {
+  signTypedData: (params: {
+    account: `0x${string}`;
+    domain: {
+      name?: string;
+      version?: string;
+      chainId?: number;
+      verifyingContract?: `0x${string}`;
+    };
+    types: Record<string, Array<{ name: string; type: string }>>;
+    primaryType: string;
+    message: Record<string, unknown>;
+  }) => Promise<`0x${string}`>;
+}
 
 // Extract payment requirements from a 402 response
 export function extractPaymentRequired(response: Response): PaymentRequired {
@@ -14,8 +29,8 @@ export function extractPaymentRequired(response: Response): PaymentRequired {
   return paymentRequired;
 }
 
-// Create a wagmi-compatible EVM signer for the x402 client
-function createWagmiEvmSigner(walletClient: WalletClient, address: `0x${string}`) {
+// Create an EVM signer for the x402 client
+function createEvmSigner(walletClient: SignableWalletClient, address: `0x${string}`) {
   return {
     address,
     signTypedData: async (params: {
@@ -43,12 +58,12 @@ function createWagmiEvmSigner(walletClient: WalletClient, address: `0x${string}`
 
 // Create the x402 payment and return the encoded header
 export async function createPaymentHeader(
-  walletClient: WalletClient,
+  walletClient: SignableWalletClient,
   address: `0x${string}`,
   paymentRequired: PaymentRequired
 ): Promise<string> {
-  // Create the wagmi-compatible signer
-  const signer = createWagmiEvmSigner(walletClient, address);
+  // Create the signer for x402
+  const signer = createEvmSigner(walletClient, address);
 
   // Use the first payment option from the accepts array
   const requirements = paymentRequired.accepts[0];
