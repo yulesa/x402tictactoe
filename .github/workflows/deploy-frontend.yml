@@ -38,6 +38,7 @@ jobs:
           VITE_API_URL: ${{ vars.VITE_API_URL }}
           VITE_REOWN_PROJECT_ID: ${{ vars.VITE_REOWN_PROJECT_ID }}
           VITE_NETWORK: ${{ vars.VITE_NETWORK }}
+          VITE_THIRDWEB_CLIENT_ID: ${{ vars.VITE_THIRDWEB_CLIENT_ID }}
         run: npm run build
 
       - name: Setup Pages
