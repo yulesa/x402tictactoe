@@ -2,7 +2,7 @@
 
 ## Project Overview
 
-A browser-based tic-tac-toe game demonstrating x402 payment protocol integration. Players pay per game using USDC on the Base Sepolia network via a browser wallet extension.
+A browser-based tic-tac-toe game demonstrating x402 payment protocol integration. Players pay 0.01 USDC per game via a browser wallet (MetaMask, Rabby, Rainbow, Coinbase Wallet). Supports both Base mainnet and Base Sepolia testnet.
 
 ## Technology Stack
 
@@ -10,10 +10,12 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 |-----------|------------|
 | Server | Node.js with Express (TypeScript) |
 | Client | React with Vite (TypeScript) |
-| Payment Protocol | x402 |
-| Network | Base Sepolia (MVP), Base Mainnet (future) |
-| Payment Token | USDC |
-| Wallet Integration | wagmi/viem with browser extensions (MetaMask, Rabby, etc.) |
+| Payment Protocol | x402 (@x402/core, @x402/evm) |
+| Network | Base mainnet & Base Sepolia testnet |
+| Payment Token | USDC (0.01 per game) |
+| Wallet Integration | Thirdweb SDK v5 (wallet connection, onramp, network switching) |
+| Blockchain Interaction | viem 2.0 (via Thirdweb's viemAdapter) |
+| Deployment | GitHub Actions (client), Render-compatible (server) |
 
 ## Game Mode
 
@@ -39,9 +41,15 @@ A browser-based tic-tac-toe game demonstrating x402 payment protocol integration
 │               ▼                   │  ┌───────────────────────┐  │
 │  ┌─────────────────────────────┐  │  │  Session Management   │  │
 │  │  Wallet Extension           │  │  │  (wallet address      │  │
-│  │  (MetaMask/Rabby)           │  │  │   in sessionStorage)  │  │
-│  │  Signs x402 payment         │  │  └───────────────────────┘  │
-│  └─────────────────────────────┘  │                             │
+│  │  (MetaMask/Rabby/Rainbow/   │  │  │   in sessionStorage)  │  │
+│  │   Coinbase via Thirdweb)    │  │  └───────────────────────┘  │
+│  │  Signs x402 payment         │  │  ┌───────────────────────┐  │
+│  │                             │  │  │  Modals               │  │
+│  │                             │  │  │  - How to Play        │  │
+│  │                             │  │  │  - Why We Built This  │  │
+│  │                             │  │  │  - Need USDC?         │  │
+│  │                             │  │  │  - QR Code (sharing)  │  │
+│  └─────────────────────────────┘  │  └───────────────────────┘  │
 └───────────────────────────────────┴─────────────────────────────┘
                     │                             │
                     │ x402 Payment Header         │ Game Moves
@@ -98,9 +106,10 @@ User clicks "Start Game"
 ### 2. Wallet Signs Payment
 
 ```
-Client → Wallet Extension (MetaMask/Rabby)
-       → User approves USDC payment
-       → Wallet signs payment payload
+Client → Thirdweb SDK → Wallet Extension (MetaMask/Rabby/Rainbow/Coinbase)
+       → viemAdapter converts Thirdweb wallet to viem WalletClient
+       → User approves USDC payment signature
+       → x402 SDK signs payment payload using viem wallet
        → Returns signed x402 header
 ```
 
@@ -116,12 +125,13 @@ Headers: {
 ### 4. Server Validates & Creates Session
 
 ```
-x402 Middleware validates payment
-       → Extract wallet address from payment
+x402 Middleware validates payment via CDP Facilitator API
+       → Extract wallet address from payment signature
        → Check if wallet has active session
-           → Yes: Return existing session (no new payment processed)
-           → No: Create new session, return session info
-       → Payment invalid: Return 402 Payment Required
+           → Yes: Return existing session (no payment settlement)
+           → No: Settle payment via facilitator, create new session
+       → Payment invalid/insufficient: Return 402 Payment Required
+       → Facilitator unavailable: Return 503 Service Unavailable
 ```
 
 ### 5. Game Play
@@ -256,30 +266,6 @@ If Bot moves first:
 
 ---
 
-## x402 Configuration
-
-### Server Configuration
-
-```typescript
-{
-  network: "base-sepolia",
-  paymentToken: "USDC",
-  paymentAddress: "<server-wallet-address>",
-  pricePerGame: "0.01" // USDC
-}
-```
-
-### Client Configuration
-
-```typescript
-{
-  network: "base-sepolia",
-  paymentToken: "USDC"
-}
-```
-
----
-
 ## Error Handling
 
 | Scenario | Behavior |
@@ -301,15 +287,19 @@ If Bot moves first:
 
 ### Server-Side Protection
 
-1. **x402 Middleware**: Validates all payment headers on protected endpoints
+1. **x402 Middleware**: Validates all payment signatures on protected endpoints via CDP Facilitator
 2. **Session-Wallet Binding**: Sessions tied to wallet address, preventing session theft
 3. **One Session Per Wallet**: Prevents abuse through multiple concurrent sessions
-4. **Rate Limiting**: Prevent abuse of endpoints
+4. **Payment Settlement**: Only settles payments for new sessions, not restorations
+5. **Rate Limiting**: Prevent abuse of endpoints (future improvement)
+6. **CDP API Authentication**: Secure API keys for mainnet payment settlement
 
 ### Client-Side
 
 1. **Secure Session Storage**: Store wallet address in sessionStorage (cleared on tab close)
-2. **Wallet Connection**: Only connect when "Start Game" is clicked
+2. **Wallet Connection via Thirdweb**: Industry-standard wallet integration
+3. **Payment Signature Only**: Uses EIP-712 signature, no direct token transfer from client
+4. **Network Validation**: Ensures wallet is on correct network before payment
 
 ---
 
@@ -322,15 +312,21 @@ tic-tac-toe-x402/
 │   │   ├── components/
 │   │   │   ├── LandingPage.tsx
 │   │   │   ├── GameBoard.tsx
-│   │   │   └── WalletConnect.tsx
+│   │   │   ├── WalletConnect.tsx
+│   │   │   └── modals/        # UI modals
+│   │   │       ├── HowToPlay.tsx
+│   │   │       ├── NeedUSDC.tsx
+│   │   │       ├── QRCodeModal.tsx
+│   │   │       └── WhyWeBuiltThis.tsx
 │   │   ├── hooks/
-│   │   │   ├── useWallet.ts      # wagmi hooks
-│   │   │   └── useSession.ts
+│   │   │   ├── useGameStart.ts   # Game initialization
+│   │   │   └── useSession.ts     # Session management
 │   │   ├── services/
-│   │   │   ├── api.ts
-│   │   │   └── x402.ts
+│   │   │   ├── api.ts            # Backend API calls
+│   │   │   └── x402.ts           # x402 payment service
 │   │   ├── App.tsx
-│   │   └── main.tsx
+│   │   ├── main.tsx              # Thirdweb + server wake-up
+│   │   └── thirdwebClient.ts     # Thirdweb SDK config
 │   ├── package.json
 │   ├── tsconfig.json
 │   └── vite.config.ts
@@ -338,38 +334,16 @@ tic-tac-toe-x402/
 ├── server/                 # Express backend (TypeScript)
 │   ├── src/
 │   │   ├── middleware/
-│   │   │   ├── x402.ts
-│   │   │   └── session.ts
+│   │   │   └── x402.ts           # Payment validation & settlement
 │   │   ├── routes/
-│   │   │   ├── session.ts
-│   │   │   └── game.ts
+│   │   │   ├── session.ts        # Session start/get endpoints
+│   │   │   └── game.ts           # Game move endpoint
 │   │   ├── services/
 │   │   │   ├── sessionStore.ts   # In-memory Map
-│   │   │   └── gameEngine.ts     # Simple Bot
-│   │   └── index.ts
+│   │   │   └── gameEngine.ts     # Simple Bot (70% optimal)
+│   │   └── index.ts              # Server setup with logging
 │   ├── package.json
 │   └── tsconfig.json
 │
 └── README.md
-```
-
----
-
-## MVP Decisions Summary
-
-| Decision | Choice |
-|----------|--------|
-| Network | Base Sepolia |
-| Payment model | One payment = one game |
-| Session storage | In-memory (single server) |
-| Session binding | Bound to wallet address |
-| Sessions per wallet | One at a time |
-| Session expiry | 5 minutes |
-| First move | Random |
-| Bot difficulty | Simple (allows mistakes) |
-| Horizontal scaling | Not supported |
-| Metrics/Observability | None |
-| Wallet connection | On-demand (after button click) |
-| Client framework | Plain React + Vite |
-| Wallet library | wagmi/viem |
-| Language | TypeScript (client & server) |
+``
